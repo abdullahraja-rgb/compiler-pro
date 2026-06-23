@@ -5,6 +5,10 @@
 #include <filesystem>
 // file handling 
 #include <fstream>
+// string stream - storing file contents into string
+#include <sstream>
+#include "../include/mycc/lexer.hpp"
+#include "lexer.cpp"
 
 
 int main(int argc, char* argv[]) {
@@ -14,7 +18,6 @@ int main(int argc, char* argv[]) {
     bool done = false;
     std::string filename;
 
-    std::filesystem::path filePath(filename);
 
     while (done != true) {
         if (argc != 1) {
@@ -35,11 +38,22 @@ int main(int argc, char* argv[]) {
                     return 1;
                 }
                 
-                std::string filelines;
-                while (std::getline(file, filelines)) {
-                    std::cout << filelines << std::endl;
+                // std::string filewords; need to create a sstring for this 
+                // filewords << file.rdbuf(); doesnt work type mismatch
+                std::stringstream filewords;
+                filewords << file.rdbuf();
+                // filewords = filewords.str() cant store sstring type to a string
+                std::string filewords_str = filewords.str();
 
+                // we need to call the tokenise function we defined in the lexer.hpp
+                std::vector<Token> filewords_token_vector = tokenise(filewords_str);
+                // conventional method to print a vector of structs
+                for (const Token& obj : filewords_token_vector) {
+                    std::cout << obj.type << " " << obj.value << std::endl;
                 }
+
+
+                // now we have stored the string in filewords we now need to pass this to our lexer
                         
                     } else {
                         std::cout << "Its not a c file. Enter a C Filename: " << std::endl;
