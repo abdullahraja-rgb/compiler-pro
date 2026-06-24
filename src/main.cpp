@@ -9,6 +9,10 @@
 #include <sstream>
 #include "../include/mycc/lexer.hpp"
 #include "lexer.cpp"
+#include "parser.cpp"
+#include "ast.cpp"
+#include "../include/mycc/ast.hpp"
+#include "../include/mycc/parser.hpp"
 
 
 int main(int argc, char* argv[]) {
@@ -51,6 +55,36 @@ int main(int argc, char* argv[]) {
                 for (const Token& obj : filewords_token_vector) {
                     std::cout << obj.type << " " << obj.value << std::endl;
                 }
+
+                // create a parser object
+                Parser parser(filewords_token_vector);
+                Program ast_rep = parser.parse_program();
+
+
+                // -------------pretty-print the tree ------------------------------
+                std::cout << "Program" << std::endl;
+                std::cout << "  FunctionDefinition name=" << ast_rep.function.name << std::endl;
+
+                if (ReturnStatement* return_statement = dynamic_cast<ReturnStatement*>(ast_rep.function.body.get())) {
+                    std::cout << "    ReturnStatement" << std::endl;
+
+                    if (ConstantExpression* constant_expression = dynamic_cast<ConstantExpression*>(return_statement->value.get())) {
+                        std::cout << "      ConstantExpression value=" << constant_expression->value << std::endl;
+                    }
+                }
+                // ------------------------------------------------------------
+
+        
+
+
+
+
+
+
+                
+
+
+
 
     
 

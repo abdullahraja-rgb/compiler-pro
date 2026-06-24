@@ -1,6 +1,13 @@
 // Placeholder for AST definitions.
 // The AST will eventually represent the structure of parsed source programs.
 
+/*
+program = Program(function_definition)
+function_definition = Function(identifier name, statement body)
+statement = Return(exp)
+exp = Constant(int)
+ */
+
 #pragma once
 
 #include <memory>
