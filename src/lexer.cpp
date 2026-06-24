@@ -29,6 +29,7 @@ struct tokenPatterns {
 static std::vector<tokenPatterns> matching = {
     {"KeywordInt", std::regex(R"(^int\b)")},
     {"KeywordReturn", std::regex(R"(^return\b)")},
+    {"KeywordVoid", std::regex(R"(^void\b)")},
     {"Identifier", std::regex(R"(^[A-Za-z_][A-Za-z0-9_]*)")},
     // constant in the book
     {"Integer", std::regex(R"(^[0-9]+)")},

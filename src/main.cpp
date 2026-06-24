@@ -45,12 +45,14 @@ int main(int argc, char* argv[]) {
                 // filewords = filewords.str() cant store sstring type to a string
                 std::string filewords_str = filewords.str();
 
-                // we need to call the tokenise function we defined in the lexer.hpp
+                // we need to call the tokenise function we declared in the lexer.hpp
                 std::vector<Token> filewords_token_vector = tokenise(filewords_str);
                 // conventional method to print a vector of structs
                 for (const Token& obj : filewords_token_vector) {
                     std::cout << obj.type << " " << obj.value << std::endl;
                 }
+
+    
 
 
                 // now we have stored the string in filewords we now need to pass this to our lexer
