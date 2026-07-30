@@ -92,5 +92,58 @@ std::vector<std::unique_ptr<Assembly::Instruction>> AssemblyGenerator::generate_
 }
 
 
+/*  */
 
+std::string AssemblyEmitter::emit_program(const Assembly::Program& program) {
+    std::string output = emit_function(program.function);
+    return output;
 
+}
+
+std::string AssemblyEmitter::emit_function(const Assembly::FunctionDefinition& function) {
+    std::string output;
+
+    output += ".globl " + function.name + "\n";
+    output += function.name + ":\n";
+
+    for (const std::unique_ptr<Assembly::Instruction>& instruction : function.instructions) {
+        output += emit_instruction(*instruction);
+    }
+
+    return output;
+}
+
+std::string AssemblyEmitter::emit_instruction(const Assembly::Instruction& instruction) {
+    const Assembly::MovInstruction* mov_instruction = dynamic_cast<const Assembly::MovInstruction*>(&instruction);
+
+    if (mov_instruction != nullptr) {
+        std::string src = emit_operand(*mov_instruction->src);
+        std::string dst = emit_operand(*mov_instruction->dst);
+
+        return "    movl " + src + ", " + dst + "\n";
+    }
+
+    const Assembly::RetInstruction* ret_instruction = dynamic_cast<const Assembly::RetInstruction*>(&instruction);
+
+    if (ret_instruction != nullptr) {
+        return "    ret\n";
+    }
+
+    throw std::runtime_error("Unsupported instruction in assembly emitter");
+}
+
+std::string AssemblyEmitter::emit_operand(const Assembly::Operand& operand) {
+    const Assembly::ImmOperand* imm_operand = dynamic_cast<const Assembly::ImmOperand*>(&operand);
+
+    if (imm_operand != nullptr) {
+        return "$" + std::to_string(imm_operand->value);
+    }
+
+    const Assembly::RegisterOperand* register_operand = dynamic_cast<const Assembly::RegisterOperand*>(&operand);
+
+    if (register_operand != nullptr) {
+        return "%" + register_operand->name;
+    }
+
+    throw std::runtime_error("Unsupported operand in assembly emitter");
+}

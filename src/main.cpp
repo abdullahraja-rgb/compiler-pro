@@ -13,6 +13,7 @@
 #include "ast.cpp"
 #include "../include/mycc/ast.hpp"
 #include "../include/mycc/parser.hpp"
+#include "../include/mycc/codegen.hpp"
 
 
 int main(int argc, char* argv[]) {
@@ -73,6 +74,11 @@ int main(int argc, char* argv[]) {
                     }
                 }
                 // ------------------------------------------------------------
+
+
+                // call the assembly generator
+                AssemblyGenerator assembly_generator;
+                Assembly::Program assembly_program = assembly_generator.generate_program(ast_rep);
 
         
 

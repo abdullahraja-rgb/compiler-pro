@@ -85,5 +85,18 @@ struct AssemblyGenerator {
 
 };
 
+struct AssemblyEmitter {
+
+    std::string emit_program(const Assembly::Program& program);
+
+    std::string emit_function(const Assembly::FunctionDefinition& function);
+
+    std::string emit_instruction(const Assembly::Instruction& statement);
+
+    std::string emit_operand(const Assembly::Operand& expression);
+
+};
+
+
 
 
