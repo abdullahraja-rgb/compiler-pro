@@ -33,6 +33,9 @@ static std::vector<tokenPatterns> matching = {
     {"Identifier", std::regex(R"(^[A-Za-z_][A-Za-z0-9_]*)")},
     // constant in the book
     {"Integer", std::regex(R"(^[0-9]+)")},
+    {"Decrement", std::regex(R"(^--)")},
+    {"Minus", std::regex(R"(^-)")},
+    {"Tilde", std::regex(R"(^~)")},
     {"LeftParen", std::regex(R"(^\()")},
     {"RightParen", std::regex(R"(^\))")},
     {"LeftBrace", std::regex(R"(^\{)")},
