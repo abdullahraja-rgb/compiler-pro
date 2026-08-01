@@ -5,7 +5,8 @@
 program = Program(function_definition)
 function_definition = Function(identifier name, statement body)
 statement = Return(exp)
-exp = Constant(int)
+exp = Constant(int) Unary(unary_operator, exp)
+unary_operator = Complement | Negate
  */
 
 #pragma once
@@ -15,6 +16,13 @@ exp = Constant(int)
 #include <utility>
 
 using Identifier = std::string;
+
+// unary_operator = Complement | Negate (two labels w no input)
+enum UnaryOperator {
+    Complement,
+    Negate
+};
+
 
 // ASDL: exp = Constant(int)
 struct Expression {
@@ -27,9 +35,15 @@ struct ConstantExpression : Expression {
     explicit ConstantExpression(int value) : value(value) {}
 };
 
+struct UnaryExpression: Expression {
+    UnaryOperator unary_operator;
+    std::unique_ptr<Expression> value;
+};
+
 // ASDL: statement = Return(exp)
 struct Statement {
     virtual ~Statement() = default;
+    
 };
 
 struct ReturnStatement : Statement {

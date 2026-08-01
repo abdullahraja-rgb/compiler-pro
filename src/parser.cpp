@@ -45,7 +45,26 @@ std::unique_ptr<Statement> Parser::parse_statement() {
 }
 
 std::unique_ptr<Expression> Parser::parse_expression() {
-    return parse_int();
+    const Token& next_token = peek();
+    if (next_token.type == "Integer") {
+        return parse_int();
+    } else if (next_token.type == "Minus" || next_token.type == "Tilde") {
+        UnaryOperator unop = parse_unop();
+        std::unique_ptr<Expression> inner_expression = parse_expression(); 
+        return std::make_unique<UnaryExpression>(unop, std::move(inner_expression));
+    } else if (next_token.type == "LeftParen") {
+        expected("LeftParen");
+        std::unique_ptr<Expression> inner_expression = parse_expression();
+        expected("RightParen");
+        return inner_expression;
+    } else {
+        throw std::runtime_error(
+            "Received an unexprected token" + next_token.value + " of type " + next_token.type
+        );
+    }
+    
+
+    
 }
 
 Identifier Parser::parse_id() {
@@ -60,6 +79,25 @@ std::unique_ptr<ConstantExpression> Parser::parse_int() {
     int int_value = std::stoi(int_token.value);
 
     return std::make_unique<ConstantExpression>(int_value);
+}
+
+UnaryOperator Parser::parse_unop() {
+    const Token& token = peek();
+
+    if (token.type == "Minus") {
+        expected("Minus");
+        return UnaryOperator::Negate;
+    }
+
+    if (token.type == "Tilde") {
+        expected("Tilde");
+        return UnaryOperator::Complement;
+    }
+
+    throw std::runtime_error(
+        "Parser error: expected unary operator but got '" +
+        token.value + "'"
+    );
 }
 
 
@@ -78,4 +116,15 @@ Token Parser::expected(const std::string& expectedtype) {
     ++currIdx;
 
     return current_token;
+}
+
+
+const Token& Parser::peek() const {
+    if (currIdx >= tokens.size()) {
+        throw std::runtime_error(
+            "Parser error: tried to peek past the end of tokens"
+        );
+    }
+
+    return tokens[currIdx];
 }

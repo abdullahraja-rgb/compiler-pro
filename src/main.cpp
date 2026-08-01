@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
                 Program ast_rep = parser.parse_program();
 
 
-                // -------------pretty-print the tree ------------------------------
+                // ------------- pretty-print the tree ------------------------------
                 std::cout << "Program" << std::endl;
                 std::cout << "  FunctionDefinition name=" << ast_rep.function.name << std::endl;
 

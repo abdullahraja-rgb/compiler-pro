@@ -39,8 +39,11 @@ struct Parser {
     std::unique_ptr<Expression> parse_expression();
     Identifier parse_id();
     std::unique_ptr<ConstantExpression> parse_int();
+    UnaryOperator parse_unop();
 
     Token expected(const std::string& expectedtype);
+    // cant update the parser object
+    const Token& peek() const;
 
 };
 
