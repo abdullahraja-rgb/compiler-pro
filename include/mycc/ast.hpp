@@ -35,9 +35,16 @@ struct ConstantExpression : Expression {
     explicit ConstantExpression(int value) : value(value) {}
 };
 
-struct UnaryExpression: Expression {
+struct UnaryExpression : Expression {
     UnaryOperator unary_operator;
     std::unique_ptr<Expression> value;
+
+    UnaryExpression(
+        UnaryOperator unary_operator,
+        std::unique_ptr<Expression> value
+    )
+        : unary_operator(unary_operator),
+          value(std::move(value)) {}
 };
 
 // ASDL: statement = Return(exp)
