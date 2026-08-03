@@ -40,37 +40,95 @@ Tacky::Program TackyGenerator::generate_program(const Program& program) {
 
 Tacky::FunctionDefinition TackyGenerator::generate_function(const FunctionDefinition& func_def) {
     std::string func_name = func_def.name;
-    std::vector<std::unique_ptr<Tacky::Instruction>> inst_list = generate_instruction(*func_def.body);
+    std::vector<std::unique_ptr<Tacky::Instruction>> inst_list = generate_instructions(*func_def.body);
     return Tacky::FunctionDefinition(std::move(func_name), std::move(inst_list));
 }
 
-std::vector<std::unique_ptr<Tacky::Instruction>> TackyGenerator::generate_instruction(const Statement& statement) {
+std::vector<std::unique_ptr<Tacky::Instruction>>
+TackyGenerator::generate_instructions(const Statement& statement) {
     std::vector<std::unique_ptr<Tacky::Instruction>> instructions;
-    
-    // check if the input statement is a return via dynamic casting
-    const ReturnStatement* rcv_statement = dynamic_cast<const ReturnStatement*>(&statement);
-    // if casting didnt fail then its a return statement
-    if (rcv_statement != nullptr) {
-        // move the srcc=expression to dest which defs to eax
-        /* access the value  */
-        const Expression& expression = *rcv_statement->value;
-        std::vector<std::unique_ptr<Tacky::Instruction>> express_val = generate_value(expression);
 
-        for (std::unique_ptr<Tacky::Instruction>& instruction : express_val) {
-            instructions.push_back(std::move(instruction));
-        }
+    const ReturnStatement* return_statement =
+        dynamic_cast<const ReturnStatement*>(&statement);
 
-        instructions.push_back(std::make_unique<Assembly::RetInstruction>());
+    if (return_statement != nullptr) {
+        std::unique_ptr<Tacky::Value> return_value = generate_value(
+            *return_statement->value,
+            instructions
+        );
+
+        instructions.push_back(
+            std::make_unique<Tacky::ReturnInstruction>(
+                std::move(return_value)
+            )
+        );
 
         return instructions;
     }
 
-    throw std::runtime_error("Unsupported statement in code generation");
+    throw std::runtime_error(
+        "Unsupported statement in TACKY generation"
+    );
 }
 
-std::unique_ptr<Tacky::Value> generate_value(
+std::unique_ptr<Tacky::Value> TackyGenerator::generate_value(
     const Expression& expression,
     std::vector<std::unique_ptr<Tacky::Instruction>>& instructions
 ) {
+    const ConstantExpression* constant_expression =
+        dynamic_cast<const ConstantExpression*>(&expression);
 
+    if (constant_expression != nullptr) {
+        return std::make_unique<Tacky::ConstantValue>(
+            constant_expression->value
+        );
+    }
+
+    const UnaryExpression* unary_expression =
+        dynamic_cast<const UnaryExpression*>(&expression);
+
+    if (unary_expression != nullptr) {
+        std::unique_ptr<Tacky::Value> source = generate_value(
+            *unary_expression->value,
+            instructions
+        );
+
+        std::string destination_name = make_temporary();
+        Tacky::UnaryOperator tacky_operator =
+            generate_unop(unary_expression->unary_operator);
+
+        instructions.push_back(
+            std::make_unique<Tacky::UnaryInstruction>(
+                tacky_operator,
+                std::move(source),
+                std::make_unique<Tacky::VariableValue>(destination_name)
+            )
+        );
+
+        return std::make_unique<Tacky::VariableValue>(
+            destination_name
+        );
+    }
+
+    throw std::runtime_error(
+        "Unsupported expression in TACKY generation"
+    );
+}
+
+Tacky::UnaryOperator TackyGenerator::generate_unop(
+    ::UnaryOperator ast_operator
+) {
+    if (ast_operator == ::Complement) {
+        return Tacky::UnaryOperator::Complement;
+    } else if (ast_operator == ::Negate) {
+        return Tacky::UnaryOperator::Negate;
+    }
+
+    throw std::runtime_error(
+        "Unsupported unary operator in TACKY generation"
+    );
+}
+
+std::string TackyGenerator::make_temporary() {
+    return "tmp." + std::to_string(temporary_counter++);
 }

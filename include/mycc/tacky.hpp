@@ -95,7 +95,7 @@ struct TackyGenerator {
     );
 
     std::vector<std::unique_ptr<Tacky::Instruction>>
-    generate_instruction(const Statement& statement);
+    generate_instructions(const Statement& statement);
 
     std::unique_ptr<Tacky::Value> generate_value(
         const Expression& expression,
