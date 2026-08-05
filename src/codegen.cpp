@@ -79,6 +79,7 @@ Var(identifier) = Pseudo(identifier)
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 /* needs to open the program node and call the generate function
 function which will travrse the funcdef node */
@@ -93,7 +94,16 @@ Assembly::FunctionDefinition AssemblyGenerator::generate_function(const Tacky::F
     std::vector<std::unique_ptr<Assembly::Instruction>> inst_list =
         generate_instructions(func_def.body);
 
-    return Assembly::FunctionDefinition(std::move(func_name), std::move(inst_list));
+    int stack_size = replace_pseudos(inst_list);
+
+    inst_list.insert(
+        inst_list.begin(),
+        std::make_unique<Assembly::AllocateStackInstruction>(stack_size)
+    );
+    std::vector<std::unique_ptr<Assembly::Instruction>> inst_list_final =
+        fix_instructions(std::move(inst_list));
+
+    return Assembly::FunctionDefinition(std::move(func_name), std::move(inst_list_final));
 }
 
 std::vector<std::unique_ptr<Assembly::Instruction>>
@@ -202,6 +212,96 @@ Assembly::UnaryOperator AssemblyGenerator::generate_unop(
     throw std::runtime_error(
         "Unsupported TACKY unary operator in assembly generation"
     );
+}
+
+int AssemblyGenerator::replace_pseudos(
+    std::vector<std::unique_ptr<Assembly::Instruction>>& instructions
+) {
+    std::unordered_map<std::string, int> pseudo_offsets;
+    int current_offset = 0;
+
+    auto replace_operand = [&](std::unique_ptr<Assembly::Operand>& operand) {
+        const Assembly::PseudoOperand* pseudo_operand =
+            dynamic_cast<const Assembly::PseudoOperand*>(operand.get());
+
+        if (pseudo_operand == nullptr) {
+            return;
+        }
+
+        const std::string identifier = pseudo_operand->identifier;
+        auto existing_offset = pseudo_offsets.find(identifier);
+        int stack_offset;
+
+        if (existing_offset == pseudo_offsets.end()) {
+            current_offset -= 4;
+            stack_offset = current_offset;
+            pseudo_offsets.emplace(identifier, stack_offset);
+        } else {
+            stack_offset = existing_offset->second;
+        }
+
+        operand = std::make_unique<Assembly::StackOperand>(stack_offset);
+    };
+
+    for (std::unique_ptr<Assembly::Instruction>& instruction : instructions) {
+        Assembly::MovInstruction* mov_instruction =
+            dynamic_cast<Assembly::MovInstruction*>(instruction.get());
+
+        if (mov_instruction != nullptr) {
+            replace_operand(mov_instruction->src);
+            replace_operand(mov_instruction->dst);
+            continue;
+        }
+
+        Assembly::UnaryInstruction* unary_instruction =
+            dynamic_cast<Assembly::UnaryInstruction*>(instruction.get());
+
+        if (unary_instruction != nullptr) {
+            replace_operand(unary_instruction->operand);
+        }
+    }
+
+    return -current_offset;
+}
+
+std::vector<std::unique_ptr<Assembly::Instruction>>
+AssemblyGenerator::fix_instructions(
+    std::vector<std::unique_ptr<Assembly::Instruction>> instructions
+) {
+    std::vector<std::unique_ptr<Assembly::Instruction>> fixed_instructions;
+
+    for (std::unique_ptr<Assembly::Instruction>& instruction : instructions) {
+        Assembly::MovInstruction* mov_instruction =
+            dynamic_cast<Assembly::MovInstruction*>(instruction.get());
+
+        const bool source_is_stack =
+            mov_instruction != nullptr &&
+            dynamic_cast<Assembly::StackOperand*>(mov_instruction->src.get()) != nullptr;
+
+        const bool destination_is_stack =
+            mov_instruction != nullptr &&
+            dynamic_cast<Assembly::StackOperand*>(mov_instruction->dst.get()) != nullptr;
+
+        if (source_is_stack && destination_is_stack) {
+            fixed_instructions.push_back(
+                std::make_unique<Assembly::MovInstruction>(
+                    std::move(mov_instruction->src),
+                    std::make_unique<Assembly::RegisterOperand>(Assembly::Register::R10)
+                )
+            );
+
+            fixed_instructions.push_back(
+                std::make_unique<Assembly::MovInstruction>(
+                    std::make_unique<Assembly::RegisterOperand>(Assembly::Register::R10),
+                    std::move(mov_instruction->dst)
+                )
+            );
+        } else {
+            fixed_instructions.push_back(std::move(instruction));
+        }
+    }
+
+    return fixed_instructions;
 }
 
 

@@ -146,6 +146,14 @@ struct AssemblyGenerator {
         Tacky::UnaryOperator unary_operator
     );
 
+    int replace_pseudos(
+        std::vector<std::unique_ptr<Assembly::Instruction>>& instructions
+    );
+
+    std::vector<std::unique_ptr<Assembly::Instruction>> fix_instructions(
+        std::vector<std::unique_ptr<Assembly::Instruction>> instructions
+    );
+
 };
 
 struct AssemblyEmitter {
@@ -159,5 +167,3 @@ struct AssemblyEmitter {
     std::string emit_operand(const Assembly::Operand& expression);
 
 };
-
-
