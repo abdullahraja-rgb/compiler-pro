@@ -1,12 +1,17 @@
 // Placeholder for the code generation interface.
 // Codegen will eventually turn compiler IR or AST nodes into assembly.
 
-/* 
+/*
 program = Program(function_definition)
 function_definition = Function(identifier name, instruction* instructions)
-instruction = Mov(operand src, operand dst) | Ret
-operand = Imm(int) | Register
- */
+instruction = Mov(operand src, operand dst)
+            | Unary(unary_operator, operand)
+            | AllocateStack(int)
+            | Ret
+unary_operator = Neg | Not
+operand = Imm(int) | Reg(reg) | Pseudo(identifier) | Stack(int)
+reg = AX | R10
+*/
 
 
 #pragma once
@@ -16,11 +21,24 @@ operand = Imm(int) | Register
 #include <utility>
 #include <vector>
 
-#include "ast.hpp"
+#include "tacky.hpp"
+
+
+
 
 namespace Assembly {
 
-// ASDL: operand = Imm(int) | Register
+enum class UnaryOperator {
+    Neg,
+    Not,
+};
+
+enum class Register {
+    AX,
+    R10
+};
+
+// ASDL: operand = Imm(int) | Reg(reg) | Pseudo(identifier) | Stack(int)
 struct Operand {
     virtual ~Operand() = default;
 };
@@ -33,13 +51,27 @@ struct ImmOperand : Operand {
 };
 
 struct RegisterOperand : Operand {
-    std::string name;
+    Register reg;
 
-    explicit RegisterOperand(std::string name)
-        : name(std::move(name)) {}
+    explicit RegisterOperand(Register reg)
+        : reg(reg) {}
 };
 
-// ASDL: instruction = Mov(operand src, operand dst) | Ret
+struct PseudoOperand : Operand {
+    std::string identifier;
+
+    explicit PseudoOperand(std::string identifier)
+        : identifier(std::move(identifier)) {}
+};
+
+struct StackOperand : Operand {
+    int offset;
+
+    explicit StackOperand(int offset)
+        : offset(offset) {}
+};
+
+// ASDL: instruction = Mov(...) | Unary(...) | AllocateStack(int) | Ret
 struct Instruction {
     virtual ~Instruction() = default;
 };
@@ -50,6 +82,25 @@ struct MovInstruction : Instruction {
 
     MovInstruction(std::unique_ptr<Operand> src, std::unique_ptr<Operand> dst)
         : src(std::move(src)), dst(std::move(dst)) {}
+};
+
+struct UnaryInstruction : Instruction {
+    UnaryOperator unary_operator;
+    std::unique_ptr<Operand> operand;
+
+    UnaryInstruction(
+        UnaryOperator unary_operator,
+        std::unique_ptr<Operand> operand
+    )
+        : unary_operator(unary_operator),
+          operand(std::move(operand)) {}
+};
+
+struct AllocateStackInstruction : Instruction {
+    int bytes;
+
+    explicit AllocateStackInstruction(int bytes)
+        : bytes(bytes) {}
 };
 
 struct RetInstruction : Instruction {};
@@ -75,13 +126,25 @@ struct Program {
 
 struct AssemblyGenerator {
 
-    Assembly::Program generate_program(const Program& program);
+    Assembly::Program generate_program(const Tacky::Program& program);
 
-    Assembly::FunctionDefinition generate_function(const FunctionDefinition& function);
+    Assembly::FunctionDefinition generate_function(const Tacky::FunctionDefinition& function);
 
-    std::vector<std::unique_ptr<Assembly::Instruction>> generate_statement(const Statement& statement);
+    std::vector<std::unique_ptr<Assembly::Instruction>> generate_instructions(
+        const std::vector<std::unique_ptr<Tacky::Instruction>>& instructions
+    );
 
-    std::vector<std::unique_ptr<Assembly::Instruction>> generate_expression(const Expression& expression);
+    std::vector<std::unique_ptr<Assembly::Instruction>> generate_instruction(
+        const Tacky::Instruction& instruction
+    );
+
+    std::unique_ptr<Assembly::Operand> generate_operand(
+        const Tacky::Value& value
+    );
+
+    Assembly::UnaryOperator generate_unop(
+        Tacky::UnaryOperator unary_operator
+    );
 
 };
 
@@ -96,7 +159,5 @@ struct AssemblyEmitter {
     std::string emit_operand(const Assembly::Operand& expression);
 
 };
-
-
 
 

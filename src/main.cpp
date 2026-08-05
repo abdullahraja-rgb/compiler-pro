@@ -26,7 +26,7 @@ if argc <= 1 no input if arc > 3 more input */
 int main(int argc, char* argv[]) {
     std::string filename;
     std::string option;
-    const std::unordered_set<std::string> valid_options{"--lex", "--parse", "--codegen"};
+    const std::unordered_set<std::string> valid_options{"--lex", "--parse", "--codegen", "--tacky"};
 
     if (argc > 3 || argc < 2) {
         std::cout << "Invalid input only enter C Filename" << std::endl;
@@ -49,6 +49,10 @@ int main(int argc, char* argv[]) {
         std::ifstream file(filename);
         if (!file) {
             std::cout << "Below is not a file" << std::endl;
+            return 1;
+        }
+        if (!file.is_open()) {
+            std::cerr << "Couldnt open the file" << std::endl;
             return 1;
         }
         // std::string filewords; need to create a sstring for this
@@ -90,13 +94,45 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
+
+
+
+
+        // tacky generation
+        TackyGenerator tacky_generator;
+        Tacky::Program tacky_program = tacky_generator.generate_program(ast_rep);
+
+
+
+        if (option == "--tacky") {
+            return 0;
+        }
+
         // call the assembly generator
         AssemblyGenerator assembly_generator;
-        Assembly::Program assembly_program = assembly_generator.generate_program(ast_rep);
+        Assembly::Program assembly_program = assembly_generator.generate_program(tacky_program);
 
         if (option == "--codegen") {
             return 0;
         }
+
+        // wiring the assembly text generator
+        AssemblyEmitter assembly_emitter;
+        std::string assembly_text = assembly_emitter.emit_program(assembly_program);
+        std::filesystem::path assembly_path(filename);
+        assembly_path.replace_extension(".s");
+        std::ofstream assembly_file(assembly_path);
+        if (!assembly_file) {
+            std::cerr << "Could not create assembly file" << std::endl;
+            return 1;
+        }
+        assembly_file << assembly_text;
+        if (!assembly_file) {
+            std::cerr << "Could not write to the assembly file" << std::endl;
+            return 1;
+        }
+        assembly_file.close();
+
 
         // now we have stored the string in filewords we now need to pass this to our lexer
     } else {
