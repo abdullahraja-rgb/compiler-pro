@@ -35,6 +35,10 @@ static std::vector<tokenPatterns> matching = {
     {"Integer", std::regex(R"(^[0-9]+)")},
     {"Decrement", std::regex(R"(^--)")},
     {"Minus", std::regex(R"(^-)")},
+    {"Addition", std::regex(R"(^\+)")},
+    {"Multiplication", std::regex(R"(^\*)")},
+    {"Division", std::regex(R"(^/)")},
+    {"Remainder", std::regex(R"(^%)")},
     {"Tilde", std::regex(R"(^~)")},
     {"LeftParen", std::regex(R"(^\()")},
     {"RightParen", std::regex(R"(^\))")},
@@ -101,4 +105,3 @@ std::vector<Token> tokenise(const std::string& filewords_str) {
     return tokens;
     
 }
-

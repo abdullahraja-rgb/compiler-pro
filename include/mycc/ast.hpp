@@ -23,6 +23,14 @@ enum UnaryOperator {
     Negate
 };
 
+enum BinaryOperator {
+    Add,
+    Subtract,
+    Multiply, 
+    Divide,
+    Remainder
+};
+
 
 // ASDL: exp = Constant(int)
 struct Expression {
@@ -46,6 +54,23 @@ struct UnaryExpression : Expression {
         : unary_operator(unary_operator),
           value(std::move(value)) {}
 };
+
+struct BinaryExpression : Expression {
+    BinaryOperator binary_operator;
+    std::unique_ptr<Expression> exp1;
+    std::unique_ptr<Expression> exp2;
+
+    BinaryExpression(
+        BinaryOperator binary_operator,
+        std::unique_ptr<Expression> exp1,
+        std::unique_ptr<Expression> exp2
+    )
+        : binary_operator(binary_operator), 
+          exp1(std::move(exp1)),
+          exp2(std::move(exp2)) {}
+};
+
+
 
 // ASDL: statement = Return(exp)
 struct Statement {
