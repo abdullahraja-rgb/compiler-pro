@@ -22,9 +22,61 @@
 if argc == 2 execute normal flow
 if argc <= 1 no input if arc > 3 more input */
 
+std::string unary_operator_name(UnaryOperator op) {
+    if (op == UnaryOperator::Complement) {
+        return "Complement";
+    }
+
+    return "Negate";
+}
+
+std::string binary_operator_name(BinaryOperator op) {
+    switch (op) {
+        case BinaryOperator::Add:
+            return "Add";
+        case BinaryOperator::Subtract:
+            return "Subtract";
+        case BinaryOperator::Multiply:
+            return "Multiply";
+        case BinaryOperator::Divide:
+            return "Divide";
+        case BinaryOperator::Remainder:
+            return "Remainder";
+    }
+
+    throw std::runtime_error("Incorrect binop");
+}
+
+void print_expression(const Expression& expression, int indent) {
+    std::string spaces(indent, ' ');
+
+    if (const auto* constant = dynamic_cast<const ConstantExpression*>(&expression)) {
+        std::cout << spaces
+                  << "ConstantExpression value="
+                  << constant->value
+                  << '\n';
+    } else if (const auto* unary = dynamic_cast<const UnaryExpression*>(&expression)) {
+        std::cout << spaces
+                  << "UnaryExpression operator="
+                  << unary_operator_name(unary->unary_operator)
+                  << '\n';
+
+        print_expression(*unary->value, indent + 2);
+    } else if (const auto* binary = dynamic_cast<const BinaryExpression*>(&expression)) {
+        std::cout << spaces
+                  << "BinaryExpression operator="
+                  << binary_operator_name(binary->binary_operator)
+                  << '\n';
+
+        print_expression(*binary->exp1, indent + 2);
+        print_expression(*binary->exp2, indent + 2);
+    }
+}
+
 
 int main(int argc, char* argv[]) {
     std::string filename;
+    // initially an empty string
     std::string option;
     const std::unordered_set<std::string> valid_options{"--lex", "--parse", "--codegen", "--tacky"};
 
@@ -78,15 +130,13 @@ int main(int argc, char* argv[]) {
         std::cout << "AST Incoming ..." << std::endl;
         std::cout << "" << std::endl;
         // ------------- pretty-print the tree ------------------------------
-        std::cout << "Program" << std::endl;
-        std::cout << "  FunctionDefinition name=" << ast_rep.function.name << std::endl;
+        std::cout << "Program\n";
+        std::cout << "  FunctionDefinition name=" << ast_rep.function.name << '\n';
 
-        if (ReturnStatement* return_statement = dynamic_cast<ReturnStatement*>(ast_rep.function.body.get())) {
-            std::cout << "    ReturnStatement" << std::endl;
-
-            if (ConstantExpression* constant_expression = dynamic_cast<ConstantExpression*>(return_statement->value.get())) {
-                std::cout << "      ConstantExpression value=" << constant_expression->value << std::endl;
-            }
+        if (const auto* return_statement =
+                dynamic_cast<const ReturnStatement*>(ast_rep.function.body.get())) {
+            std::cout << "    ReturnStatement\n";
+            print_expression(*return_statement->value, 6);
         }
         // ------------------------------------------------------------
 
