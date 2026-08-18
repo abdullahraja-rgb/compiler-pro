@@ -36,14 +36,18 @@ struct Parser {
     Program parse_program();
     FunctionDefinition parse_function();
     std::unique_ptr<Statement> parse_statement();
-    std::unique_ptr<Expression> parse_expression();
+    std::unique_ptr<Expression> parse_expression(int min_prec);
+    std::unique_ptr<Expression> parse_factor();
+
     Identifier parse_id();
     std::unique_ptr<ConstantExpression> parse_int();
     UnaryOperator parse_unop();
+    BinaryOperator parse_binop();
 
     Token expected(const std::string& expectedtype);
     // cant update the parser object
     const Token& peek() const;
+    int precedence(const Token& token);
 
 };
 
