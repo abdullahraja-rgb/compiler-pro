@@ -309,8 +309,12 @@ AssemblyGenerator::fix_instructions(
 
 std::string AssemblyEmitter::emit_program(const Assembly::Program& program) {
     std::string output = emit_function(program.function);
-    return output;
 
+#ifdef __linux__
+    output += ".section .note.GNU-stack,\"\",@progbits\n";
+#endif
+
+    return output;
 }
 
 std::string AssemblyEmitter::emit_function(const Assembly::FunctionDefinition& function) {
@@ -318,6 +322,8 @@ std::string AssemblyEmitter::emit_function(const Assembly::FunctionDefinition& f
 
     output += ".globl " + function.name + "\n";
     output += function.name + ":\n";
+    output += "    pushq %rbp\n";
+    output += "    movq %rsp, %rbp\n";
 
     for (const std::unique_ptr<Assembly::Instruction>& instruction : function.instructions) {
         output += emit_instruction(*instruction);
@@ -362,7 +368,9 @@ std::string AssemblyEmitter::emit_instruction(const Assembly::Instruction& instr
     const Assembly::RetInstruction* ret_instruction = dynamic_cast<const Assembly::RetInstruction*>(&instruction);
 
     if (ret_instruction != nullptr) {
-        return "    ret\n";
+        return "    movq %rbp, %rsp\n"
+               "    popq %rbp\n"
+               "    ret\n";
     }
 
     throw std::runtime_error("Unsupported instruction in assembly emitter");
