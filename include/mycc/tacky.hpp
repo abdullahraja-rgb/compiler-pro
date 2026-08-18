@@ -15,6 +15,15 @@ enum class UnaryOperator {
     Negate
 };
 
+enum class BinaryOperator {
+    Add,
+    Subtract,
+    Multiply, 
+    Divide,
+    Remainder
+};
+
+
 // val = Constant(int) | Var(identifier)
 struct Value {
     virtual ~Value() = default;
@@ -60,6 +69,24 @@ struct UnaryInstruction : Instruction {
         : unary_operator(unary_operator),
           source(std::move(source)),
           destination(std::move(destination)) {}
+};
+
+struct BinaryInstruction : Instruction {
+    BinaryOperator binop;
+    std::unique_ptr<Value> src1;
+    std::unique_ptr<Value> src2;
+    std::unique_ptr<Value> dst;
+
+    BinaryInstruction(
+        BinaryOperator binop,
+        std::unique_ptr<Value> src1,
+        std::unique_ptr<Value> src2,
+        std::unique_ptr<Value> dst
+    )
+        : binop(binop),
+          src1(std::move(src1)),
+          src2(std::move(src2)),
+          dst(std::move(dst)) {}
 };
 
 // function_definition = Function(identifier, instruction* body)

@@ -110,6 +110,16 @@ std::unique_ptr<Tacky::Value> TackyGenerator::generate_value(
         );
     }
 
+    const BinaryExpression* bin_exp = dynamic_cast<const BinaryExpression*>(&expression);
+
+    if (bin_exp != nullptr) {
+        std::unique_ptr<Tacky::Value> source1 = generate_value(
+            *bin_exp->exp1,
+            *bin_exp->exp2,
+            instructions
+        )
+
+    }
     throw std::runtime_error(
         "Unsupported expression in TACKY generation"
     );
