@@ -5,12 +5,16 @@
 program = Program(function_definition)
 function_definition = Function(identifier name, instruction* instructions)
 instruction = Mov(operand src, operand dst)
-            | Unary(unary_operator, operand)
-            | AllocateStack(int)
-            | Ret
+| Unary(unary_operator, operand)
+| Binary(binary_operator, operand, operand)
+| Idiv(operand)
+| Cdq
+| AllocateStack(int)
+| Ret
 unary_operator = Neg | Not
+binary_operator = Add | Sub | Mult
 operand = Imm(int) | Reg(reg) | Pseudo(identifier) | Stack(int)
-reg = AX | R10
+reg = AX | DX | R10 | R11
 */
 
 
@@ -35,7 +39,15 @@ enum class UnaryOperator {
 
 enum class Register {
     AX,
-    R10
+    R10,
+    DX,
+    R11
+};
+
+enum class BinaryOperator {
+    Add,
+    Sub,
+    Mult
 };
 
 // ASDL: operand = Imm(int) | Reg(reg) | Pseudo(identifier) | Stack(int)
@@ -95,6 +107,34 @@ struct UnaryInstruction : Instruction {
         : unary_operator(unary_operator),
           operand(std::move(operand)) {}
 };
+
+struct BinaryInstruction : Instruction {
+    BinaryOperator binary_operator;
+    std::unique_ptr<Operand> operand1;
+    std::unique_ptr<Operand> operand2;
+
+    BinaryInstruction (
+        BinaryOperator binary_operator,
+        std::unique_ptr<Operand> operand1,
+        std::unique_ptr<Operand> operand2
+
+    )
+        : binary_operator(binary_operator),
+          operand1(std::move(operand1)),
+          operand2(std::move(operand2)) {}
+};
+
+struct Idiv : Instruction {
+    std::unique_ptr<Operand> operand;
+
+    Idiv (
+        std::unique_ptr<Operand> operand
+
+    )
+        : operand(std::move(operand)) {}
+};
+
+
 
 struct AllocateStackInstruction : Instruction {
     int bytes;

@@ -115,9 +115,24 @@ std::unique_ptr<Tacky::Value> TackyGenerator::generate_value(
     if (bin_exp != nullptr) {
         std::unique_ptr<Tacky::Value> source1 = generate_value(
             *bin_exp->exp1,
+            instructions
+        );
+        std::unique_ptr<Tacky::Value> source2 = generate_value(
             *bin_exp->exp2,
             instructions
-        )
+        );
+
+        std::string dst_name = make_temporary();
+        Tacky::BinaryOperator binary_op = generate_binop(
+            bin_exp->binary_operator
+        );
+        instructions.push_back(std::make_unique<Tacky::BinaryInstruction>(
+            binary_op, 
+            std::move(source1),
+            std::move(source2),
+            std::make_unique<Tacky::VariableValue>(dst_name)
+        ));
+        return std::make_unique<Tacky::VariableValue>(dst_name);
 
     }
     throw std::runtime_error(
@@ -137,6 +152,27 @@ Tacky::UnaryOperator TackyGenerator::generate_unop(
     throw std::runtime_error(
         "Unsupported unary operator in TACKY generation"
     );
+}
+
+Tacky::BinaryOperator TackyGenerator::generate_binop(
+    ::BinaryOperator ast_bi_operator
+) {
+    if (ast_bi_operator == ::Add) {
+        return Tacky::BinaryOperator::Add;
+    }
+    if (ast_bi_operator == ::Subtract) {
+        return Tacky::BinaryOperator::Subtract;
+    }
+    if (ast_bi_operator == ::Remainder) {
+        return Tacky::BinaryOperator::Remainder;
+    }
+    if (ast_bi_operator == ::Multiply) {
+        return Tacky::BinaryOperator::Multiply;
+    }
+    if (ast_bi_operator == ::Divide) {
+        return Tacky::BinaryOperator::Divide;
+    }
+    throw std::runtime_error("Wrong Ast Binary Operator");
 }
 
 std::string TackyGenerator::make_temporary() {

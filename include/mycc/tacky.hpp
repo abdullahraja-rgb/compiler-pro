@@ -133,6 +133,10 @@ struct TackyGenerator {
         ::UnaryOperator ast_operator
     );
 
+    Tacky::BinaryOperator generate_binop(
+        ::BinaryOperator ast_bi_operator
+    );
+
     // prevent conflict in generated ids
     std::string make_temporary();
     int temporary_counter = 0;
