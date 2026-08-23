@@ -356,6 +356,15 @@ int AssemblyGenerator::replace_pseudos(
 
         if (unary_instruction != nullptr) {
             replace_operand(unary_instruction->operand);
+            continue;
+        }
+
+        Assembly::BinaryInstruction* binary_instruction =
+            dynamic_cast<Assembly::BinaryInstruction*>(instruction.get());
+
+        if (binary_instruction != nullptr) {
+            replace_operand(binary_instruction->operand1);
+            replace_operand(binary_instruction->operand2);
         }
     }
 
