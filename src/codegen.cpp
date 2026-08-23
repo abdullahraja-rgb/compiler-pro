@@ -403,9 +403,101 @@ AssemblyGenerator::fix_instructions(
                     std::move(mov_instruction->dst)
                 )
             );
-        } else {
-            fixed_instructions.push_back(std::move(instruction));
+            continue;
         }
+
+        Assembly::Idiv* idiv = dynamic_cast<Assembly::Idiv*>(instruction.get());
+        const bool src_is_imm =
+            idiv != nullptr &&
+            dynamic_cast<Assembly::ImmOperand*>(idiv->operand.get()) != nullptr;
+
+        if (src_is_imm) {
+            fixed_instructions.push_back(
+                std::make_unique<Assembly::MovInstruction>(
+                    std::move(idiv->operand),
+                    std::make_unique<Assembly::RegisterOperand>(Assembly::Register::R10)
+                )
+            );
+
+            fixed_instructions.push_back(
+                std::make_unique<Assembly::Idiv>(
+                    std::make_unique<Assembly::RegisterOperand>(Assembly::Register::R10)
+                )
+            );
+            continue;
+        }
+
+        Assembly::BinaryInstruction* binary_instruction =
+            dynamic_cast<Assembly::BinaryInstruction*>(instruction.get());
+
+        if (binary_instruction != nullptr) {
+            const bool binary_source_is_stack =
+                dynamic_cast<Assembly::StackOperand*>(
+                    binary_instruction->operand1.get()
+                ) != nullptr;
+
+            Assembly::StackOperand* binary_destination_stack =
+                dynamic_cast<Assembly::StackOperand*>(
+                    binary_instruction->operand2.get()
+                );
+
+            const bool is_add_or_subtract =
+                binary_instruction->binary_operator == Assembly::BinaryOperator::Add ||
+                binary_instruction->binary_operator == Assembly::BinaryOperator::Sub;
+
+            if (is_add_or_subtract &&
+                binary_source_is_stack &&
+                binary_destination_stack != nullptr) {
+                Assembly::BinaryOperator binary_operator =
+                    binary_instruction->binary_operator;
+
+                fixed_instructions.push_back(
+                    std::make_unique<Assembly::MovInstruction>(
+                        std::move(binary_instruction->operand1),
+                        std::make_unique<Assembly::RegisterOperand>(Assembly::Register::R10)
+                    )
+                );
+
+                fixed_instructions.push_back(
+                    std::make_unique<Assembly::BinaryInstruction>(
+                        binary_operator,
+                        std::make_unique<Assembly::RegisterOperand>(Assembly::Register::R10),
+                        std::move(binary_instruction->operand2)
+                    )
+                );
+                continue;
+            }
+
+            if (binary_instruction->binary_operator == Assembly::BinaryOperator::Mult &&
+                binary_destination_stack != nullptr) {
+                const int destination_offset = binary_destination_stack->offset;
+
+                fixed_instructions.push_back(
+                    std::make_unique<Assembly::MovInstruction>(
+                        std::move(binary_instruction->operand2),
+                        std::make_unique<Assembly::RegisterOperand>(Assembly::Register::R11)
+                    )
+                );
+
+                fixed_instructions.push_back(
+                    std::make_unique<Assembly::BinaryInstruction>(
+                        Assembly::BinaryOperator::Mult,
+                        std::move(binary_instruction->operand1),
+                        std::make_unique<Assembly::RegisterOperand>(Assembly::Register::R11)
+                    )
+                );
+
+                fixed_instructions.push_back(
+                    std::make_unique<Assembly::MovInstruction>(
+                        std::make_unique<Assembly::RegisterOperand>(Assembly::Register::R11),
+                        std::make_unique<Assembly::StackOperand>(destination_offset)
+                    )
+                );
+                continue;
+            }
+        }
+
+        fixed_instructions.push_back(std::move(instruction));
     }
 
     return fixed_instructions;
