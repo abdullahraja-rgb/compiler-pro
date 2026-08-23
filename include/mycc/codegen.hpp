@@ -134,6 +134,8 @@ struct Idiv : Instruction {
         : operand(std::move(operand)) {}
 };
 
+struct Cdq : Instruction {};
+
 
 
 struct AllocateStackInstruction : Instruction {
@@ -184,6 +186,10 @@ struct AssemblyGenerator {
 
     Assembly::UnaryOperator generate_unop(
         Tacky::UnaryOperator unary_operator
+    );
+
+    Assembly::BinaryOperator generate_binop(
+        Tacky::BinaryOperator binary_operator
     );
 
     int replace_pseudos(

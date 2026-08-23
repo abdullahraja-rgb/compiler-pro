@@ -169,6 +169,85 @@ AssemblyGenerator::generate_instruction(
         return instructions;
     }
 
+    const Tacky::BinaryInstruction* binary_instruction = dynamic_cast<
+        const Tacky::BinaryInstruction*>(&tacky_instruction);
+    
+    if (binary_instruction != nullptr) {
+
+        if (binary_instruction->binop == Tacky::BinaryOperator::Divide) {
+            instructions.push_back(
+                std::make_unique<Assembly::MovInstruction>(
+                    generate_operand(*binary_instruction->src1),
+                    std::make_unique<Assembly::RegisterOperand>(Assembly::Register::AX)
+                )
+            );
+
+            instructions.push_back(
+                std::make_unique<Assembly::Cdq>()
+            );
+
+            instructions.push_back(
+                std::make_unique<Assembly::Idiv>(
+                    generate_operand(*binary_instruction->src2)
+                )
+            );
+
+            instructions.push_back(
+                std::make_unique<Assembly::MovInstruction>(
+                    std::make_unique<Assembly::RegisterOperand>(Assembly::Register::AX),
+                    generate_operand(*binary_instruction->dst)
+                )
+            );
+
+            return instructions;
+        }
+
+        if (binary_instruction->binop == Tacky::BinaryOperator::Remainder) {
+            instructions.push_back(
+                std::make_unique<Assembly::MovInstruction>(
+                    generate_operand(*binary_instruction->src1),
+                    std::make_unique<Assembly::RegisterOperand>(Assembly::Register::AX)
+                )
+            );
+
+            instructions.push_back(
+                std::make_unique<Assembly::Cdq>()
+            );
+
+            instructions.push_back(
+                std::make_unique<Assembly::Idiv>(
+                    generate_operand(*binary_instruction->src2)
+                )
+            );
+
+            instructions.push_back(
+                std::make_unique<Assembly::MovInstruction>(
+                    std::make_unique<Assembly::RegisterOperand>(Assembly::Register::DX),
+                    generate_operand(*binary_instruction->dst)
+                )
+            );
+
+            return instructions;
+        }
+
+        instructions.push_back(
+            std::make_unique<Assembly::MovInstruction>(
+                generate_operand(*binary_instruction->src1),
+                generate_operand(*binary_instruction->dst)
+            )
+        );
+
+        instructions.push_back(
+            std::make_unique<Assembly::BinaryInstruction>(
+                generate_binop(binary_instruction->binop),
+                generate_operand(*binary_instruction->src2),
+                generate_operand(*binary_instruction->dst)
+            )
+        );
+
+        return instructions;
+    }
+
     throw std::runtime_error(
         "Unsupported TACKY instruction in assembly generation"
     );
@@ -196,6 +275,25 @@ std::unique_ptr<Assembly::Operand> AssemblyGenerator::generate_operand(
     throw std::runtime_error(
         "Unsupported TACKY value in assembly generation"
     );
+}
+
+Assembly::BinaryOperator AssemblyGenerator::generate_binop(
+    Tacky::BinaryOperator binary_operator
+) {
+    if (binary_operator == Tacky::BinaryOperator::Add) {
+        return Assembly::BinaryOperator::Add;
+    }
+
+    if (binary_operator == Tacky::BinaryOperator::Subtract) {
+        return Assembly::BinaryOperator::Sub;
+    }
+
+    if (binary_operator == Tacky::BinaryOperator::Multiply) {
+        return Assembly::BinaryOperator::Mult;
+    }
+
+    throw std::runtime_error("Incorrect Tacky Binops");
+    
 }
 
 Assembly::UnaryOperator AssemblyGenerator::generate_unop(
