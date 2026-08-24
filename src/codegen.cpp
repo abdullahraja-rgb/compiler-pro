@@ -366,6 +366,13 @@ int AssemblyGenerator::replace_pseudos(
             replace_operand(binary_instruction->operand1);
             replace_operand(binary_instruction->operand2);
         }
+
+        Assembly::Idiv* idiv = 
+            dynamic_cast<Assembly::Idiv*>(instruction.get());
+
+        if (idiv != nullptr) {
+            replace_operand(idiv->operand);
+        } 
     }
 
     return -current_offset;
@@ -556,6 +563,40 @@ std::string AssemblyEmitter::emit_instruction(const Assembly::Instruction& instr
         }
     }
 
+    const Assembly::BinaryInstruction* binary_instruction =
+        dynamic_cast<const Assembly::BinaryInstruction*>(&instruction);
+
+    if (binary_instruction != nullptr) {
+        std::string src = emit_operand(*binary_instruction->operand1);
+        std::string dst = emit_operand(*binary_instruction->operand2);
+
+        if (binary_instruction->binary_operator == Assembly::BinaryOperator::Add) {
+            return "    addl " + src + ", " + dst + "\n";
+        }
+
+        if (binary_instruction->binary_operator == Assembly::BinaryOperator::Sub) {
+            return "    subl " + src + ", " + dst + "\n";
+        }
+
+        if (binary_instruction->binary_operator == Assembly::BinaryOperator::Mult) {
+            return "    imull " + src + ", " + dst + "\n";
+        }
+    }
+
+    const Assembly::Idiv* idiv_instruction =
+        dynamic_cast<const Assembly::Idiv*>(&instruction);
+
+    if (idiv_instruction != nullptr) {
+        return "    idivl " + emit_operand(*idiv_instruction->operand) + "\n";
+    }
+
+    const Assembly::Cdq* cdq_instruction =
+        dynamic_cast<const Assembly::Cdq*>(&instruction);
+
+    if (cdq_instruction != nullptr) {
+        return "    cdq\n";
+    }
+
     const Assembly::AllocateStackInstruction* allocate_stack_instruction =
         dynamic_cast<const Assembly::AllocateStackInstruction*>(&instruction);
 
@@ -591,6 +632,14 @@ std::string AssemblyEmitter::emit_operand(const Assembly::Operand& operand) {
 
         if (register_operand->reg == Assembly::Register::R10) {
             return "%r10d";
+        }
+
+        if (register_operand->reg == Assembly::Register::DX) {
+            return "%edx";
+        }
+
+        if (register_operand->reg == Assembly::Register::R11) {
+            return "%r11d";
         }
     }
 
