@@ -32,7 +32,7 @@ static std::vector<tokenPatterns> matching = {
     {"KeywordVoid", std::regex(R"(^void\b)")},
     {"Identifier", std::regex(R"(^[A-Za-z_][A-Za-z0-9_]*)")},
     // constant in the book
-    {"Integer", std::regex(R"(^[0-9]+)")},
+    {"Integer", std::regex(R"(^[0-9]+\b)")},
     {"Decrement", std::regex(R"(^--)")},
     {"Minus", std::regex(R"(^-)")},
     {"Addition", std::regex(R"(^\+)")},

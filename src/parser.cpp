@@ -11,6 +11,13 @@ to analyse the tokens and return the relevant class/node for each node represent
 
 Program Parser::parse_program() {
     FunctionDefinition function_parse = parse_function();
+
+    if (currIdx != tokens.size()) {
+        throw std::runtime_error(
+            "Parser error: unexpected tokens after function definition"
+        );
+    }
+    
     return Program(std::move(function_parse));
 }
 
@@ -31,6 +38,8 @@ FunctionDefinition Parser::parse_function() {
 
     expected("RightBrace");
 
+
+
     return FunctionDefinition(std::move(id_parse), std::move(statement_parse));
 }
 
@@ -48,6 +57,7 @@ std::unique_ptr<Expression> Parser::parse_factor() {
     const Token& next_token = peek();
     if (next_token.type == "Integer") {
         return parse_int();
+
     } else if (next_token.type == "Minus" || next_token.type == "Tilde") {
         UnaryOperator unop = parse_unop();
         std::unique_ptr<Expression> inner_expression = parse_factor(); 

@@ -16,6 +16,7 @@
 #include "../include/mycc/codegen.hpp"
 #include "../include/mycc/tacky.hpp"
 #include <unordered_set>
+#include <cstdlib>
 
 
 /* if arg ==3 check for options
@@ -97,8 +98,20 @@ int main(int argc, char* argv[]) {
 
     // checks if a c file
     if (filename.ends_with(".c")) {
+
+        std::filesystem::path preprocessed_path(filename);
+        preprocessed_path.replace_extension(".i");
+        std::string command =
+            "gcc -E -P \"" + filename +
+            "\" -o \"" + preprocessed_path.string() + "\"";
+
+        if (std::system(command.c_str()) != 0) {
+            std::cerr << "Preprocessing failed\n";
+            return 1;
+        }
+
         // read the file content
-        std::ifstream file(filename);
+        std::ifstream file(preprocessed_path);
         if (!file) {
             std::cout << "Below is not a file" << std::endl;
             return 1;
@@ -107,6 +120,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "Couldnt open the file" << std::endl;
             return 1;
         }
+       
         // std::string filewords; need to create a sstring for this
         // filewords << file.rdbuf(); doesnt work type mismatch
         std::stringstream filewords;
