@@ -1,0 +1,3 @@
+[submodule "test-suites/writing-a-c-compiler-tests"]
+	path = test-suites/writing-a-c-compiler-tests
+	url = https://github.com/nlsandler/writing-a-c-compiler-tests.git
