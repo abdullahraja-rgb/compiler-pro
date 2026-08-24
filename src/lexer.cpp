@@ -92,12 +92,12 @@ std::vector<Token> tokenise(const std::string& filewords_str) {
 
                     found_match = true;
                     break;
-                }
+                } 
             }
 
             if (found_match == false) {
                 std::cout << "Lexer error: unknown token starts at " << filewords_str[current_position] << std::endl;
-                break;
+                throw std::runtime_error("Lexer error: invalid token");
             }
         }
     }
