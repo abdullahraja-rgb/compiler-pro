@@ -58,7 +58,7 @@ std::unique_ptr<Expression> Parser::parse_factor() {
     if (next_token.type == "Integer") {
         return parse_int();
 
-    } else if (next_token.type == "Minus" || next_token.type == "Tilde") {
+    } else if (next_token.type == "Minus" || next_token.type == "Tilde" || next_token.type == "LogicalNot") {
         UnaryOperator unop = parse_unop();
         std::unique_ptr<Expression> inner_expression = parse_factor(); 
         return std::make_unique<UnaryExpression>(unop, std::move(inner_expression));
@@ -77,7 +77,7 @@ std::unique_ptr<Expression> Parser::parse_factor() {
 std::unique_ptr<Expression> Parser::parse_expression(int min_prec) {
     std::unique_ptr<Expression> left = parse_factor();
     Token next_token = peek();
-    while ((next_token.type == "Addition" || next_token.type == "Minus" || next_token.type == "Multiplication" || next_token.type == "Division" || next_token.type == "Remainder") && precedence(next_token) >= min_prec) {
+    while ((next_token.type == "Addition" || next_token.type == "Minus" || next_token.type == "Multiplication" || next_token.type == "Division" || next_token.type == "Remainder" || next_token.type == "LogicalAnd" || next_token.type == "LogicalOr" || next_token.type == "Equal" || next_token.type == "NotEqual" || next_token.type == "LessThan" || next_token.type == "LessThanOrEqual" || next_token.type == "GreaterThan" || next_token.type == "GreaterThanOrEqual") && precedence(next_token) >= min_prec) {
         BinaryOperator bin_op = parse_binop();
         int input_minprec = precedence(next_token) + 1;
         std::unique_ptr<Expression> right = parse_expression(input_minprec);
@@ -100,7 +100,6 @@ std::unique_ptr<ConstantExpression> Parser::parse_int() {
 
     return std::make_unique<ConstantExpression>(int_value);
 }
-
 BinaryOperator Parser::parse_binop() {
     const Token& token = peek();
 
@@ -125,6 +124,38 @@ BinaryOperator Parser::parse_binop() {
         expected("Remainder");
         return BinaryOperator::Remainder;
     }
+    if (token.type == "LogicalAnd") {
+        expected("LogicalAnd");
+        return BinaryOperator::And;
+    }
+    if (token.type == "LogicalOr") {
+        expected("LogicalOr");
+        return BinaryOperator::Or;
+    }
+    if (token.type == "Equal") {
+        expected("Equal");
+        return BinaryOperator::Equal;
+    }
+    if (token.type == "NotEqual") {
+        expected("NotEqual");
+        return BinaryOperator::NotEqual;
+    }
+    if (token.type == "LessThan") {
+        expected("LessThan");
+        return BinaryOperator::LessThan;
+    }
+    if (token.type == "LessThanOrEqual") {
+        expected("LessThanOrEqual");
+        return BinaryOperator::LessOrEqual;
+    }
+    if (token.type == "GreaterThan") {
+        expected("GreaterThan");
+        return BinaryOperator::GreaterThan;
+    }
+    if (token.type == "GreaterThanOrEqual") {
+        expected("GreaterThanOrEqual");
+        return BinaryOperator::GreaterOrEqual;
+    }
 
     throw std::runtime_error("Not correct input for the parse_binop()");
 }
@@ -140,6 +171,11 @@ UnaryOperator Parser::parse_unop() {
     if (token.type == "Tilde") {
         expected("Tilde");
         return UnaryOperator::Complement;
+    }
+
+    if (token.type == "LogicalNot") {
+        expected("LogicalNot");
+        return UnaryOperator::Not;
     }
 
     throw std::runtime_error(
@@ -181,6 +217,21 @@ int Parser::precedence(const Token& token) {
     
     // const Token& token = peek();
     std::cout << token.type << std::endl;
+    if (token.type == "LogicalOr") {
+        return 5;
+    }
+    if (token.type == "LogicalAnd") {
+        return 10;
+    }
+    if (token.type == "Equal" || token.type == "NotEqual") {
+        return 30;
+    }
+    if (token.type == "LessThan" ||
+        token.type == "LessThanOrEqual" ||
+        token.type == "GreaterThan" ||
+        token.type == "GreaterThanOrEqual") {
+        return 35;
+    }
     if (token.type == "Addition") {
         return 45;
     }

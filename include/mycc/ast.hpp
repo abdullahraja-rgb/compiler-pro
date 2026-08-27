@@ -20,7 +20,8 @@ using Identifier = std::string;
 // unary_operator = Complement | Negate (two labels w no input)
 enum UnaryOperator {
     Complement,
-    Negate
+    Negate,
+    Not
 };
 
 enum BinaryOperator {
@@ -28,7 +29,15 @@ enum BinaryOperator {
     Subtract,
     Multiply, 
     Divide,
-    Remainder
+    Remainder,
+    And,
+    Or,
+    Equal,
+    NotEqual,
+    LessThan,
+    LessOrEqual,
+    GreaterThan,
+    GreaterOrEqual
 };
 
 
@@ -101,4 +110,3 @@ struct Program {
     explicit Program(FunctionDefinition function)
         : function(std::move(function)) {}
 };
-

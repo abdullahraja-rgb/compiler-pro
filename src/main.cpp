@@ -27,6 +27,9 @@ std::string unary_operator_name(UnaryOperator op) {
     if (op == UnaryOperator::Complement) {
         return "Complement";
     }
+    if (op == UnaryOperator::Not) {
+        return "LogicalNot";
+    }
 
     return "Negate";
 }
@@ -43,6 +46,22 @@ std::string binary_operator_name(BinaryOperator op) {
             return "Divide";
         case BinaryOperator::Remainder:
             return "Remainder";
+        case BinaryOperator::And:
+            return "And";
+        case BinaryOperator::Or:
+            return "Or";
+        case BinaryOperator::Equal:
+            return "Equal";
+        case BinaryOperator::NotEqual:
+            return "NotEqual";
+        case BinaryOperator::LessThan:
+            return "LessThan";
+        case BinaryOperator::LessOrEqual:
+            return "LessOrEqual";
+        case BinaryOperator::GreaterThan:
+            return "GreaterThan";
+        case BinaryOperator::GreaterOrEqual:
+            return "GreaterOrEqual";
     }
 
     throw std::runtime_error("Incorrect binop");
