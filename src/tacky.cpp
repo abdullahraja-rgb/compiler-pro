@@ -111,8 +111,19 @@ std::unique_ptr<Tacky::Value> TackyGenerator::generate_value(
     }
 
     const BinaryExpression* bin_exp = dynamic_cast<const BinaryExpression*>(&expression);
+    /* check if the binary operator is and or not if it is create  */
 
     if (bin_exp != nullptr) {
+        // e.g BinExp(And, e1, e2)
+        if (bin_exp->binary_operator == BinaryOperator::And) {
+            return generate_logical_and(*bin_exp, instructions);
+            
+        }
+        if (bin_exp->binary_operator == BinaryOperator::Or) {
+            return generate_logical_or(*bin_exp, instructions);
+            
+        }
+
         std::unique_ptr<Tacky::Value> source1 = generate_value(
             *bin_exp->exp1,
             instructions
@@ -121,6 +132,7 @@ std::unique_ptr<Tacky::Value> TackyGenerator::generate_value(
             *bin_exp->exp2,
             instructions
         );
+
 
         std::string dst_name = make_temporary();
         Tacky::BinaryOperator binary_op = generate_binop(
@@ -140,6 +152,119 @@ std::unique_ptr<Tacky::Value> TackyGenerator::generate_value(
     );
 }
 
+std::unique_ptr<Tacky::Value> TackyGenerator::generate_logical_and(
+    const BinaryExpression& expression,
+    std::vector<std::unique_ptr<Tacky::Instruction>>& instructions
+) {
+    std::string false_label = "and_false." + make_temporary();
+    std::string end_label = "and_end." + make_temporary();
+    std::string destination_name = make_temporary();
+
+    // generate_value for e1 -> might be a const val or an expression again (unary or binary)
+    // it will resolve to 1 or 0 or a constant
+    std::unique_ptr<Tacky::Value> left = generate_value(
+        *expression.exp1,
+        instructions
+    );
+    // if zero then go to false label
+    instructions.push_back(
+        std::make_unique<Tacky::JumpIfZero>(
+            std::move(left),
+            false_label
+        )
+    );
+
+    std::unique_ptr<Tacky::Value> right = generate_value(
+        *expression.exp2,
+        instructions
+    );
+    instructions.push_back(
+        std::make_unique<Tacky::JumpIfZero>(
+            std::move(right),
+            false_label
+        )
+    );
+
+    instructions.push_back(
+        std::make_unique<Tacky::Copy>(
+            std::make_unique<Tacky::ConstantValue>(1),
+            std::make_unique<Tacky::VariableValue>(destination_name)
+        )
+    );
+    instructions.push_back(
+        std::make_unique<Tacky::Jump>(end_label)
+    );
+    instructions.push_back(
+        std::make_unique<Tacky::Label>(false_label)
+    );
+    instructions.push_back(
+        std::make_unique<Tacky::Copy>(
+            std::make_unique<Tacky::ConstantValue>(0),
+            std::make_unique<Tacky::VariableValue>(destination_name)
+        )
+    );
+    instructions.push_back(
+        std::make_unique<Tacky::Label>(end_label)
+    );
+
+    return std::make_unique<Tacky::VariableValue>(destination_name);
+}
+
+std::unique_ptr<Tacky::Value> TackyGenerator::generate_logical_or(
+    const BinaryExpression& expression,
+    std::vector<std::unique_ptr<Tacky::Instruction>>& instructions
+) {
+    std::string true_label = "or_true." + make_temporary();
+    std::string end_label = "or_end." + make_temporary();
+    std::string destination_name = make_temporary();
+
+    std::unique_ptr<Tacky::Value> left = generate_value(
+        *expression.exp1,
+        instructions
+    );
+    instructions.push_back(
+        std::make_unique<Tacky::JumpIfNotZero>(
+            std::move(left),
+            true_label
+        )
+    );
+
+    std::unique_ptr<Tacky::Value> right = generate_value(
+        *expression.exp2,
+        instructions
+    );
+    instructions.push_back(
+        std::make_unique<Tacky::JumpIfNotZero>(
+            std::move(right),
+            true_label
+        )
+    );
+
+    instructions.push_back(
+        std::make_unique<Tacky::Copy>(
+            std::make_unique<Tacky::ConstantValue>(0),
+            std::make_unique<Tacky::VariableValue>(destination_name)
+        )
+    );
+    instructions.push_back(
+        std::make_unique<Tacky::Jump>(end_label)
+    );
+    instructions.push_back(
+        std::make_unique<Tacky::Label>(true_label)
+    );
+    instructions.push_back(
+        std::make_unique<Tacky::Copy>(
+            std::make_unique<Tacky::ConstantValue>(1),
+            std::make_unique<Tacky::VariableValue>(destination_name)
+        )
+    );
+    instructions.push_back(
+        std::make_unique<Tacky::Label>(end_label)
+    );
+
+    return std::make_unique<Tacky::VariableValue>(destination_name);
+}
+
 Tacky::UnaryOperator TackyGenerator::generate_unop(
     ::UnaryOperator ast_operator
 ) {
@@ -147,6 +272,8 @@ Tacky::UnaryOperator TackyGenerator::generate_unop(
         return Tacky::UnaryOperator::Complement;
     } else if (ast_operator == ::Negate) {
         return Tacky::UnaryOperator::Negate;
+    } else {
+        return Tacky::UnaryOperator::Not;
     }
 
     throw std::runtime_error(
@@ -171,6 +298,24 @@ Tacky::BinaryOperator TackyGenerator::generate_binop(
     }
     if (ast_bi_operator == ::Divide) {
         return Tacky::BinaryOperator::Divide;
+    }
+    if (ast_bi_operator == ::Equal) {
+        return Tacky::BinaryOperator::Equal;
+    }
+    if (ast_bi_operator == ::NotEqual) {
+        return Tacky::BinaryOperator::NotEqual;
+    }
+    if (ast_bi_operator == ::LessThan) {
+        return Tacky::BinaryOperator::LessThan;
+    }
+    if (ast_bi_operator == ::LessOrEqual) {
+        return Tacky::BinaryOperator::LessOrEqual;
+    }
+    if (ast_bi_operator == ::GreaterThan) {
+        return Tacky::BinaryOperator::GreaterThan;
+    }
+    if (ast_bi_operator == ::GreaterOrEqual) {
+        return Tacky::BinaryOperator::GreaterOrEqual;
     }
     throw std::runtime_error("Wrong Ast Binary Operator");
 }

@@ -12,7 +12,8 @@ using Identifier = std::string;
 
 enum class UnaryOperator {
     Complement,
-    Negate
+    Negate,
+    Not 
 };
 
 enum class BinaryOperator {
@@ -20,7 +21,13 @@ enum class BinaryOperator {
     Subtract,
     Multiply, 
     Divide,
-    Remainder
+    Remainder, 
+    Equal,
+    NotEqual,
+    LessThan,
+    LessOrEqual,
+    GreaterThan,
+    GreaterOrEqual
 };
 
 
@@ -89,6 +96,61 @@ struct BinaryInstruction : Instruction {
           dst(std::move(dst)) {}
 };
 
+struct Copy : Instruction {
+    std::unique_ptr<Value> src;
+    std::unique_ptr<Value> dst;
+
+    Copy(
+        std::unique_ptr<Value> src,
+        std::unique_ptr<Value> dst
+    )   
+        : src(std::move(src)),
+          dst(std::move(dst)) {}
+
+};
+
+struct Jump : Instruction {
+    Identifier target;
+
+    Jump (
+        Identifier target
+    ) 
+        : target(std::move(target)) {}
+};
+
+struct JumpIfZero : Instruction {
+    std::unique_ptr<Value> condition;
+    Identifier target;
+
+    JumpIfZero(
+        std::unique_ptr<Value> condition,
+        Identifier target
+    )
+        : condition(std::move(condition)),
+          target(std::move(target)) {}
+};
+
+
+struct JumpIfNotZero: Instruction {
+    std::unique_ptr<Value> condition;
+    Identifier target;
+
+    JumpIfNotZero(
+        std::unique_ptr<Value> condition,
+        Identifier target
+    )
+        : condition(std::move(condition)),
+          target(std::move(target)) {}
+};
+
+struct Label : Instruction {
+    Identifier name;
+
+    explicit Label(Identifier name)
+        : name(std::move(name)) {}
+};
+
+
 // function_definition = Function(identifier, instruction* body)
 struct FunctionDefinition {
     Identifier name;
@@ -126,6 +188,16 @@ struct TackyGenerator {
 
     std::unique_ptr<Tacky::Value> generate_value(
         const Expression& expression,
+        std::vector<std::unique_ptr<Tacky::Instruction>>& instructions
+    );
+
+    std::unique_ptr<Tacky::Value> generate_logical_and(
+        const BinaryExpression& expression,
+        std::vector<std::unique_ptr<Tacky::Instruction>>& instructions
+    );
+
+    std::unique_ptr<Tacky::Value> generate_logical_or(
+        const BinaryExpression& expression,
         std::vector<std::unique_ptr<Tacky::Instruction>>& instructions
     );
 
