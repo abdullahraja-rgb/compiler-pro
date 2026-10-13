@@ -17,6 +17,7 @@
 #include "../include/mycc/tacky.hpp"
 #include <unordered_set>
 #include <cstdlib>
+#include <chrono>
 
 
 /* if arg ==3 check for options
@@ -98,7 +99,7 @@ int main(int argc, char* argv[]) {
     std::string filename;
     // initially an empty string
     std::string option;
-    const std::unordered_set<std::string> valid_options{"--lex", "--parse", "--codegen", "--tacky"};
+    const std::unordered_set<std::string> valid_options{"--lex", "--parse", "--codegen", "--tacky", "--benchmark"};
 
     if (argc > 3 || argc < 2) {
         std::cout << "Invalid input only enter C Filename" << std::endl;
@@ -114,6 +115,18 @@ int main(int argc, char* argv[]) {
             return -1;
         }
     }
+    
+    bool benchmark_mode = option == "--benchmark";
+
+    long long preprocessing_time = 0;
+    long long lexing_time = 0;
+    long long parsing_time = 0;
+    long long tacky_time = 0;
+    long long assembly_generation_time = 0;
+    long long code_emission_time = 0;
+
+    auto total_start = std::chrono::steady_clock::now();
+    
 
     // checks if a c file
     if (filename.ends_with(".c")) {
@@ -124,10 +137,17 @@ int main(int argc, char* argv[]) {
             "gcc -E -P \"" + filename +
             "\" -o \"" + preprocessed_path.string() + "\"";
 
+        // start preprocessing
+        auto preprocessing_start = std::chrono::steady_clock::now();
         if (std::system(command.c_str()) != 0) {
             std::cerr << "Preprocessing failed\n";
             return 1;
         }
+        auto preprocessing_end = std::chrono::steady_clock::now();
+        preprocessing_time =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                preprocessing_end - preprocessing_start
+            ).count();
 
         // read the file content
         std::ifstream file(preprocessed_path);
@@ -146,12 +166,24 @@ int main(int argc, char* argv[]) {
         filewords << file.rdbuf();
         // filewords = filewords.str() cant store sstring type to a string
         std::string filewords_str = filewords.str();
+
+        auto lexing_start = std::chrono::steady_clock::now();
         // we need to call the tokenise function we declared in the lexer.hpp
         std::vector<Token> filewords_token_vector = tokenise(filewords_str);
-        // conventional method to print a vector of structs
-        for (const Token& obj : filewords_token_vector) {
-            std::cout << obj.type << " " << obj.value << std::endl;
+        auto lexing_end = std::chrono::steady_clock::now();
+        lexing_time =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                lexing_end - lexing_start
+            ).count();
+
+        if (!benchmark_mode) {
+            // conventional method to print a vector of structs
+            for (const Token& obj : filewords_token_vector) {
+                std::cout << obj.type << " " << obj.value << std::endl;
+            }
+
         }
+
 
         if (option == "--lex") {
             return 0;
@@ -159,19 +191,30 @@ int main(int argc, char* argv[]) {
 
         // create a parser object
         Parser parser(filewords_token_vector);
+        auto parsing_start = std::chrono::steady_clock::now();
         Program ast_rep = parser.parse_program();
-        std::cout << "AST Incoming ..." << std::endl;
-        std::cout << "" << std::endl;
-        // ------------- pretty-print the tree ------------------------------
-        std::cout << "Program\n";
-        std::cout << "  FunctionDefinition name=" << ast_rep.function.name << '\n';
+        auto parsing_end = std::chrono::steady_clock::now();
+        parsing_time =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                parsing_end - parsing_start
+            ).count();
 
-        if (const auto* return_statement =
-                dynamic_cast<const ReturnStatement*>(ast_rep.function.body.get())) {
-            std::cout << "    ReturnStatement\n";
-            print_expression(*return_statement->value, 6);
+
+        if (!benchmark_mode) {
+            std::cout << "AST Incoming ..." << std::endl;
+            std::cout << "" << std::endl;
+            // ------------- pretty-print the tree ------------------------------
+            std::cout << "Program\n";
+            std::cout << "  FunctionDefinition name=" << ast_rep.function.name << '\n';
+
+            if (const auto* return_statement =
+                    dynamic_cast<const ReturnStatement*>(ast_rep.function.body.get())) {
+                std::cout << "    ReturnStatement\n";
+                print_expression(*return_statement->value, 6);
+            }
+            // ------------------------------------------------------------
         }
-        // ------------------------------------------------------------
+
 
         if (option == "--parse") {
             return 0;
@@ -183,7 +226,14 @@ int main(int argc, char* argv[]) {
 
         // tacky generation
         TackyGenerator tacky_generator;
+        auto ir_start = std::chrono::steady_clock::now();
         Tacky::Program tacky_program = tacky_generator.generate_program(ast_rep);
+        auto ir_end = std::chrono::steady_clock::now();
+        tacky_time =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                ir_end - ir_start
+            ).count();
+
 
 
 
@@ -193,13 +243,20 @@ int main(int argc, char* argv[]) {
 
         // call the assembly generator
         AssemblyGenerator assembly_generator;
+        auto assembly_generation_start = std::chrono::steady_clock::now();
         Assembly::Program assembly_program = assembly_generator.generate_program(tacky_program);
+        auto assembly_generation_end = std::chrono::steady_clock::now();
+        assembly_generation_time =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                assembly_generation_end - assembly_generation_start
+            ).count();
 
         if (option == "--codegen") {
             return 0;
         }
 
         // wiring the assembly text generator
+        auto code_emission_start = std::chrono::steady_clock::now();
         AssemblyEmitter assembly_emitter;
         std::string assembly_text = assembly_emitter.emit_program(assembly_program);
         std::filesystem::path assembly_path(filename);
@@ -215,6 +272,29 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         assembly_file.close();
+        auto code_emission_end = std::chrono::steady_clock::now();
+        code_emission_time =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                code_emission_end - code_emission_start
+            ).count();
+
+        if (benchmark_mode) {
+            auto total_end = std::chrono::steady_clock::now();
+            long long total_time =
+                std::chrono::duration_cast<std::chrono::microseconds>(
+                    total_end - total_start
+                ).count();
+
+            // stdout the benchmarking data
+            std::cout << "BENCHMARK,"
+                      << preprocessing_time << ","
+                      << lexing_time << ","
+                      << parsing_time << ","
+                      << tacky_time << ","
+                      << assembly_generation_time << ","
+                      << code_emission_time << ","
+                      << total_time << std::endl;
+        }
 
 
         // now we have stored the string in filewords we now need to pass this to our lexer
