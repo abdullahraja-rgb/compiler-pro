@@ -152,6 +152,31 @@ AssemblyGenerator::generate_instruction(
         dynamic_cast<const Tacky::UnaryInstruction*>(&tacky_instruction);
 
     if (unary_instruction != nullptr) {
+        if (unary_instruction->unary_operator == Tacky::UnaryOperator::Not) {
+            instructions.push_back(
+                std::make_unique<Assembly::Cmp>(
+                    std::make_unique<Assembly::ImmOperand>(0),
+                    generate_operand(*unary_instruction->source)
+                )
+            );
+
+            instructions.push_back(
+                std::make_unique<Assembly::MovInstruction>(
+                    std::make_unique<Assembly::ImmOperand>(0),
+                    generate_operand(*unary_instruction->destination)
+                )
+            );
+
+            instructions.push_back(
+                std::make_unique<Assembly::SetCC>(
+                    Assembly::ConditionCode::E,
+                    generate_operand(*unary_instruction->destination)
+                )
+            );
+
+            return instructions;
+        }
+
         instructions.push_back(
             std::make_unique<Assembly::MovInstruction>(
                 generate_operand(*unary_instruction->source),
@@ -230,6 +255,42 @@ AssemblyGenerator::generate_instruction(
             return instructions;
         }
 
+        const bool is_relational_operator =
+            binary_instruction->binop == Tacky::BinaryOperator::Equal ||
+            binary_instruction->binop == Tacky::BinaryOperator::NotEqual ||
+            binary_instruction->binop == Tacky::BinaryOperator::LessThan ||
+            binary_instruction->binop == Tacky::BinaryOperator::LessOrEqual ||
+            binary_instruction->binop == Tacky::BinaryOperator::GreaterThan ||
+            binary_instruction->binop == Tacky::BinaryOperator::GreaterOrEqual;
+
+        if (is_relational_operator) {
+            Assembly::ConditionCode condition_code =
+                generate_cond_code(binary_instruction->binop);
+
+            instructions.push_back(
+                std::make_unique<Assembly::Cmp>(
+                    generate_operand(*binary_instruction->src2),
+                    generate_operand(*binary_instruction->src1)
+                )
+            );
+
+            instructions.push_back(
+                std::make_unique<Assembly::MovInstruction>(
+                    std::make_unique<Assembly::ImmOperand>(0),
+                    generate_operand(*binary_instruction->dst)
+                )
+            );
+
+            instructions.push_back(
+                std::make_unique<Assembly::SetCC>(
+                    condition_code,
+                    generate_operand(*binary_instruction->dst)
+                )
+            );
+
+            return instructions;
+        }
+
         instructions.push_back(
             std::make_unique<Assembly::MovInstruction>(
                 generate_operand(*binary_instruction->src1),
@@ -243,6 +304,84 @@ AssemblyGenerator::generate_instruction(
                 generate_operand(*binary_instruction->src2),
                 generate_operand(*binary_instruction->dst)
             )
+        );
+
+        return instructions;
+    }
+
+    const Tacky::Copy* copy_instruction =
+        dynamic_cast<const Tacky::Copy*>(&tacky_instruction);
+
+    if (copy_instruction != nullptr) {
+        instructions.push_back(
+            std::make_unique<Assembly::MovInstruction>(
+                generate_operand(*copy_instruction->src),
+                generate_operand(*copy_instruction->dst)
+            )
+        );
+
+        return instructions;
+    }
+
+    const Tacky::Jump* jump_instruction =
+        dynamic_cast<const Tacky::Jump*>(&tacky_instruction);
+
+    if (jump_instruction != nullptr) {
+        instructions.push_back(
+            std::make_unique<Assembly::Jmp>(jump_instruction->target)
+        );
+
+        return instructions;
+    }
+
+    const Tacky::JumpIfZero* jump_if_zero =
+        dynamic_cast<const Tacky::JumpIfZero*>(&tacky_instruction);
+
+    if (jump_if_zero != nullptr) {
+        instructions.push_back(
+            std::make_unique<Assembly::Cmp>(
+                std::make_unique<Assembly::ImmOperand>(0),
+                generate_operand(*jump_if_zero->condition)
+            )
+        );
+
+        instructions.push_back(
+            std::make_unique<Assembly::JmpCC>(
+                Assembly::ConditionCode::E,
+                jump_if_zero->target
+            )
+        );
+
+        return instructions;
+    }
+
+    const Tacky::JumpIfNotZero* jump_if_not_zero =
+        dynamic_cast<const Tacky::JumpIfNotZero*>(&tacky_instruction);
+
+    if (jump_if_not_zero != nullptr) {
+        instructions.push_back(
+            std::make_unique<Assembly::Cmp>(
+                std::make_unique<Assembly::ImmOperand>(0),
+                generate_operand(*jump_if_not_zero->condition)
+            )
+        );
+
+        instructions.push_back(
+            std::make_unique<Assembly::JmpCC>(
+                Assembly::ConditionCode::NE,
+                jump_if_not_zero->target
+            )
+        );
+
+        return instructions;
+    }
+
+    const Tacky::Label* label_instruction =
+        dynamic_cast<const Tacky::Label*>(&tacky_instruction);
+
+    if (label_instruction != nullptr) {
+        instructions.push_back(
+            std::make_unique<Assembly::Label>(label_instruction->name)
         );
 
         return instructions;
@@ -294,6 +433,38 @@ Assembly::BinaryOperator AssemblyGenerator::generate_binop(
 
     throw std::runtime_error("Incorrect Tacky Binops");
     
+}
+
+Assembly::ConditionCode AssemblyGenerator::generate_cond_code(
+    Tacky::BinaryOperator binary_operator
+) {
+    if (binary_operator == Tacky::BinaryOperator::Equal) {
+        return Assembly::ConditionCode::E;
+    }
+
+    if (binary_operator == Tacky::BinaryOperator::NotEqual) {
+        return Assembly::ConditionCode::NE;
+    }
+
+    if (binary_operator == Tacky::BinaryOperator::LessThan) {
+        return Assembly::ConditionCode::L;
+    }
+
+    if (binary_operator == Tacky::BinaryOperator::LessOrEqual) {
+        return Assembly::ConditionCode::LE;
+    }
+
+    if (binary_operator == Tacky::BinaryOperator::GreaterThan) {
+        return Assembly::ConditionCode::G;
+    }
+
+    if (binary_operator == Tacky::BinaryOperator::GreaterOrEqual) {
+        return Assembly::ConditionCode::GE;
+    }
+
+    throw std::runtime_error(
+        "Unsupported TACKY comparison operator"
+    );
 }
 
 Assembly::UnaryOperator AssemblyGenerator::generate_unop(
@@ -365,6 +536,7 @@ int AssemblyGenerator::replace_pseudos(
         if (binary_instruction != nullptr) {
             replace_operand(binary_instruction->operand1);
             replace_operand(binary_instruction->operand2);
+            continue;
         }
 
         Assembly::Idiv* idiv = 
@@ -372,7 +544,24 @@ int AssemblyGenerator::replace_pseudos(
 
         if (idiv != nullptr) {
             replace_operand(idiv->operand);
-        } 
+            continue;
+        }
+
+        Assembly::Cmp* cmp_instruction =
+            dynamic_cast<Assembly::Cmp*>(instruction.get());
+
+        if (cmp_instruction != nullptr) {
+            replace_operand(cmp_instruction->operand1);
+            replace_operand(cmp_instruction->operand2);
+            continue;
+        }
+
+        Assembly::SetCC* setcc_instruction =
+            dynamic_cast<Assembly::SetCC*>(instruction.get());
+
+        if (setcc_instruction != nullptr) {
+            replace_operand(setcc_instruction->operand);
+        }
     }
 
     return -current_offset;
@@ -432,6 +621,68 @@ AssemblyGenerator::fix_instructions(
                 )
             );
             continue;
+        }
+
+        Assembly::Cmp* cmp_instruction =
+            dynamic_cast<Assembly::Cmp*>(instruction.get());
+
+        if (cmp_instruction != nullptr) {
+            const bool first_operand_is_stack =
+                dynamic_cast<Assembly::StackOperand*>(
+                    cmp_instruction->operand1.get()
+                ) != nullptr;
+
+            const bool second_operand_is_stack =
+                dynamic_cast<Assembly::StackOperand*>(
+                    cmp_instruction->operand2.get()
+                ) != nullptr;
+
+            const bool second_operand_is_immediate =
+                dynamic_cast<Assembly::ImmOperand*>(
+                    cmp_instruction->operand2.get()
+                ) != nullptr;
+
+            if (first_operand_is_stack && second_operand_is_stack) {
+                fixed_instructions.push_back(
+                    std::make_unique<Assembly::MovInstruction>(
+                        std::move(cmp_instruction->operand1),
+                        std::make_unique<Assembly::RegisterOperand>(
+                            Assembly::Register::R10
+                        )
+                    )
+                );
+
+                fixed_instructions.push_back(
+                    std::make_unique<Assembly::Cmp>(
+                        std::make_unique<Assembly::RegisterOperand>(
+                            Assembly::Register::R10
+                        ),
+                        std::move(cmp_instruction->operand2)
+                    )
+                );
+                continue;
+            }
+
+            if (second_operand_is_immediate) {
+                fixed_instructions.push_back(
+                    std::make_unique<Assembly::MovInstruction>(
+                        std::move(cmp_instruction->operand2),
+                        std::make_unique<Assembly::RegisterOperand>(
+                            Assembly::Register::R11
+                        )
+                    )
+                );
+
+                fixed_instructions.push_back(
+                    std::make_unique<Assembly::Cmp>(
+                        std::move(cmp_instruction->operand1),
+                        std::make_unique<Assembly::RegisterOperand>(
+                            Assembly::Register::R11
+                        )
+                    )
+                );
+                continue;
+            }
         }
 
         Assembly::BinaryInstruction* binary_instruction =
@@ -526,8 +777,14 @@ std::string AssemblyEmitter::emit_program(const Assembly::Program& program) {
 std::string AssemblyEmitter::emit_function(const Assembly::FunctionDefinition& function) {
     std::string output;
 
-    output += ".globl " + function.name + "\n";
-    output += function.name + ":\n";
+#ifdef __APPLE__
+    std::string function_name = "_" + function.name;
+#else
+    std::string function_name = function.name;
+#endif
+
+    output += ".globl " + function_name + "\n";
+    output += function_name + ":\n";
     output += "    pushq %rbp\n";
     output += "    movq %rsp, %rbp\n";
 
@@ -597,6 +854,46 @@ std::string AssemblyEmitter::emit_instruction(const Assembly::Instruction& instr
         return "    cdq\n";
     }
 
+    const Assembly::Cmp* cmp_instruction =
+        dynamic_cast<const Assembly::Cmp*>(&instruction);
+
+    if (cmp_instruction != nullptr) {
+        std::string first_operand = emit_operand(*cmp_instruction->operand1);
+        std::string second_operand = emit_operand(*cmp_instruction->operand2);
+
+        return "    cmpl " + first_operand + ", " + second_operand + "\n";
+    }
+
+    const Assembly::Jmp* jump_instruction =
+        dynamic_cast<const Assembly::Jmp*>(&instruction);
+
+    if (jump_instruction != nullptr) {
+        return "    jmp " + format_label(jump_instruction->target) + "\n";
+    }
+
+    const Assembly::JmpCC* conditional_jump =
+        dynamic_cast<const Assembly::JmpCC*>(&instruction);
+
+    if (conditional_jump != nullptr) {
+        return "    j" + emit_condition_code(conditional_jump->condition_code) +
+               " " + format_label(conditional_jump->target) + "\n";
+    }
+
+    const Assembly::SetCC* conditional_set =
+        dynamic_cast<const Assembly::SetCC*>(&instruction);
+
+    if (conditional_set != nullptr) {
+        return "    set" + emit_condition_code(conditional_set->condition_code) +
+               " " + emit_operand(*conditional_set->operand, true) + "\n";
+    }
+
+    const Assembly::Label* label_instruction =
+        dynamic_cast<const Assembly::Label*>(&instruction);
+
+    if (label_instruction != nullptr) {
+        return format_label(label_instruction->identifier) + ":\n";
+    }
+
     const Assembly::AllocateStackInstruction* allocate_stack_instruction =
         dynamic_cast<const Assembly::AllocateStackInstruction*>(&instruction);
 
@@ -616,7 +913,10 @@ std::string AssemblyEmitter::emit_instruction(const Assembly::Instruction& instr
     throw std::runtime_error("Unsupported instruction in assembly emitter");
 }
 
-std::string AssemblyEmitter::emit_operand(const Assembly::Operand& operand) {
+std::string AssemblyEmitter::emit_operand(
+    const Assembly::Operand& operand,
+    bool use_byte_register
+) {
     const Assembly::ImmOperand* imm_operand = dynamic_cast<const Assembly::ImmOperand*>(&operand);
 
     if (imm_operand != nullptr) {
@@ -627,18 +927,30 @@ std::string AssemblyEmitter::emit_operand(const Assembly::Operand& operand) {
 
     if (register_operand != nullptr) {
         if (register_operand->reg == Assembly::Register::AX) {
+            if (use_byte_register) {
+                return "%al";
+            }
             return "%eax";
         }
 
         if (register_operand->reg == Assembly::Register::R10) {
+            if (use_byte_register) {
+                return "%r10b";
+            }
             return "%r10d";
         }
 
         if (register_operand->reg == Assembly::Register::DX) {
+            if (use_byte_register) {
+                return "%dl";
+            }
             return "%edx";
         }
 
         if (register_operand->reg == Assembly::Register::R11) {
+            if (use_byte_register) {
+                return "%r11b";
+            }
             return "%r11d";
         }
     }
@@ -661,4 +973,42 @@ std::string AssemblyEmitter::emit_operand(const Assembly::Operand& operand) {
     }
 
     throw std::runtime_error("Unsupported operand in assembly emitter");
+}
+
+std::string AssemblyEmitter::emit_condition_code(
+    Assembly::ConditionCode condition_code
+) {
+    if (condition_code == Assembly::ConditionCode::E) {
+        return "e";
+    }
+
+    if (condition_code == Assembly::ConditionCode::NE) {
+        return "ne";
+    }
+
+    if (condition_code == Assembly::ConditionCode::L) {
+        return "l";
+    }
+
+    if (condition_code == Assembly::ConditionCode::LE) {
+        return "le";
+    }
+
+    if (condition_code == Assembly::ConditionCode::G) {
+        return "g";
+    }
+
+    if (condition_code == Assembly::ConditionCode::GE) {
+        return "ge";
+    }
+
+    throw std::runtime_error("Unsupported assembly condition code");
+}
+
+std::string AssemblyEmitter::format_label(const std::string& label) {
+#ifdef __APPLE__
+    return "L" + label;
+#else
+    return ".L" + label;
+#endif
 }

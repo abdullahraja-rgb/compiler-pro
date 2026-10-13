@@ -50,6 +50,15 @@ enum class BinaryOperator {
     Mult
 };
 
+enum class ConditionCode {
+    E,
+    NE,
+    G,
+    GE,
+    L,
+    LE
+};
+
 // ASDL: operand = Imm(int) | Reg(reg) | Pseudo(identifier) | Stack(int)
 struct Operand {
     virtual ~Operand() = default;
@@ -136,6 +145,53 @@ struct Idiv : Instruction {
 
 struct Cdq : Instruction {};
 
+struct Cmp : Instruction {
+    std::unique_ptr<Operand> operand1;
+    std::unique_ptr<Operand> operand2;
+
+    Cmp(
+        std::unique_ptr<Operand> operand1,
+        std::unique_ptr<Operand> operand2
+    )
+        : operand1(std::move(operand1)),
+          operand2(std::move(operand2)) {}
+};
+
+struct Jmp : Instruction {
+    std::string target;
+
+    explicit Jmp(std::string target)
+        : target(std::move(target)) {}
+};
+
+struct JmpCC : Instruction {
+    ConditionCode condition_code;
+    std::string target;
+
+    JmpCC(ConditionCode condition_code, std::string target)
+        : condition_code(condition_code),
+          target(std::move(target)) {}
+};
+
+struct SetCC : Instruction {
+    ConditionCode condition_code;
+    std::unique_ptr<Operand> operand;
+
+    SetCC(
+        ConditionCode condition_code,
+        std::unique_ptr<Operand> operand
+    )
+        : condition_code(condition_code),
+          operand(std::move(operand)) {}
+};
+
+struct Label : Instruction {
+    std::string identifier;
+
+    explicit Label(std::string identifier)
+        : identifier(std::move(identifier)) {}
+};
+
 
 
 struct AllocateStackInstruction : Instruction {
@@ -210,6 +266,10 @@ struct AssemblyEmitter {
 
     std::string emit_instruction(const Assembly::Instruction& statement);
 
-    std::string emit_operand(const Assembly::Operand& expression);
+    std::string emit_operand(const Assembly::Operand& expression, bool use_byte_register = false);
+
+    std::string emit_condition_code(Assembly::ConditionCode condition_code);
+
+    std::string format_label(const std::string& label);
 
 };
