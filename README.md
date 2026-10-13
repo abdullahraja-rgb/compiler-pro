@@ -1,14 +1,16 @@
-# C++ Compiler Project
+# C Compiler in C++
 
-This repository is currently just the initial skeleton for a learning compiler.
+A small C compiler written in C++, inspired by Nora Sandler’s
+_Writing a C Compiler_.
 
-The planned pipeline is:
+The project follows the book’s compiler architecture and development stages,
+while branching out through my own C++ implementations, design decisions,
+debugging tools, benchmarks and experiments.
 
-```text
-source code -> lexer -> parser -> AST -> semantic analysis -> IR -> assembly
-```
+It currently supports integer expressions, arithmetic, comparisons, unary
+operators and short-circuiting logical operators. Source code passes through
+a lexer, parser, abstract syntax tree, TACKY intermediate representation and
+x86-64 assembly generator.
 
-No implementation code has been added yet. The files under `src/`, `include/`,
-`tests/`, and `examples/` are placeholders with comments describing what each part
-will eventually do.
-
+The project is still in development, with variables, control flow, loops and
+functions planned for later stages.
