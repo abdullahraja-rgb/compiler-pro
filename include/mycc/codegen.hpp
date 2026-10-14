@@ -248,6 +248,10 @@ struct AssemblyGenerator {
         Tacky::BinaryOperator binary_operator
     );
 
+    Assembly::ConditionCode generate_cond_code(
+        Tacky::BinaryOperator binary_operator
+    );
+
     int replace_pseudos(
         std::vector<std::unique_ptr<Assembly::Instruction>>& instructions
     );
