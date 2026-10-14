@@ -43,6 +43,7 @@ static std::vector<tokenPatterns> matching = {
     {"LogicalAnd", std::regex(R"(^&&)")},
     {"LogicalOr", std::regex(R"(^\|\|)")},
     {"Equal", std::regex(R"(^==)")},
+    {"Assignment", std::regex(R"(^=)")},
     {"NotEqual", std::regex(R"(^!=)")},
     {"LessThanOrEqual", std::regex(R"(^<=)")},
     {"GreaterThanOrEqual", std::regex(R"(^>=)")},

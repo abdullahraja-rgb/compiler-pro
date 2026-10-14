@@ -14,6 +14,7 @@ unary_operator = Complement | Negate
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 using Identifier = std::string;
 
@@ -52,6 +53,13 @@ struct ConstantExpression : Expression {
     explicit ConstantExpression(int value) : value(value) {}
 };
 
+struct VariableExpression : Expression {
+    Identifier name;
+
+    explicit VariableExpression(Identifier name)
+        : name(std::move(name)) {}
+};
+
 struct UnaryExpression : Expression {
     UnaryOperator unary_operator;
     std::unique_ptr<Expression> value;
@@ -79,6 +87,18 @@ struct BinaryExpression : Expression {
           exp2(std::move(exp2)) {}
 };
 
+struct AssignmentExpression : Expression {
+    std::unique_ptr<Expression> left;
+    std::unique_ptr<Expression> right;
+
+    AssignmentExpression(
+        std::unique_ptr<Expression> left,
+        std::unique_ptr<Expression> right
+    )
+        : left(std::move(left)),
+          right(std::move(right)) {}
+};
+
 
 
 // ASDL: statement = Return(exp)
@@ -94,12 +114,54 @@ struct ReturnStatement : Statement {
         : value(std::move(value)) {}
 };
 
-// ASDL: function_definition = Function(identifier name, statement body)
+struct ExpressionStatement : Statement {
+    std::unique_ptr<Expression> expression;
+
+    explicit ExpressionStatement(std::unique_ptr<Expression> expression)
+        : expression(std::move(expression)) {}
+};
+
+struct NullStatement : Statement {};
+
+struct Declaration {
+    Identifier name;
+    std::unique_ptr<Expression> initializer;
+
+    Declaration(
+        Identifier name,
+        std::unique_ptr<Expression> initializer
+    )
+        : name(std::move(name)),
+          initializer(std::move(initializer)) {}
+};
+
+struct BlockItem {
+    virtual ~BlockItem() = default;
+};
+
+struct StatementBlockItem : BlockItem {
+    std::unique_ptr<Statement> statement;
+
+    explicit StatementBlockItem(std::unique_ptr<Statement> statement)
+        : statement(std::move(statement)) {}
+};
+
+struct DeclarationBlockItem : BlockItem {
+    Declaration declaration;
+
+    explicit DeclarationBlockItem(Declaration declaration)
+        : declaration(std::move(declaration)) {}
+};
+
+// ASDL: function_definition = Function(identifier name, block_item* body)
 struct FunctionDefinition {
     Identifier name;
-    std::unique_ptr<Statement> body;
+    std::vector<std::unique_ptr<BlockItem>> body;
 
-    FunctionDefinition(Identifier name, std::unique_ptr<Statement> body)
+    FunctionDefinition(
+        Identifier name,
+        std::vector<std::unique_ptr<BlockItem>> body
+    )
         : name(std::move(name)), body(std::move(body)) {}
 };
 

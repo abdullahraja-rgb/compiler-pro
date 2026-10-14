@@ -35,6 +35,8 @@ struct Parser {
 
     Program parse_program();
     FunctionDefinition parse_function();
+    std::unique_ptr<BlockItem> parse_block_item();
+    Declaration parse_declaration();
     std::unique_ptr<Statement> parse_statement();
     std::unique_ptr<Expression> parse_expression(int min_prec);
     std::unique_ptr<Expression> parse_factor();

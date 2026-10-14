@@ -40,7 +40,26 @@ Tacky::Program TackyGenerator::generate_program(const Program& program) {
 
 Tacky::FunctionDefinition TackyGenerator::generate_function(const FunctionDefinition& func_def) {
     std::string func_name = func_def.name;
-    std::vector<std::unique_ptr<Tacky::Instruction>> inst_list = generate_instructions(*func_def.body);
+    std::vector<std::unique_ptr<Tacky::Instruction>> inst_list;
+
+    for (const std::unique_ptr<BlockItem>& block_item : func_def.body) {
+        const StatementBlockItem* statement_item =
+            dynamic_cast<const StatementBlockItem*>(block_item.get());
+
+        if (statement_item == nullptr) {
+            throw std::runtime_error(
+                "Declarations are not supported in TACKY generation yet"
+            );
+        }
+
+        std::vector<std::unique_ptr<Tacky::Instruction>> next_instructions =
+            generate_instructions(*statement_item->statement);
+
+        for (std::unique_ptr<Tacky::Instruction>& instruction : next_instructions) {
+            inst_list.push_back(std::move(instruction));
+        }
+    }
+
     return Tacky::FunctionDefinition(std::move(func_name), std::move(inst_list));
 }
 

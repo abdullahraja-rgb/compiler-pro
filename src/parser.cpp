@@ -34,29 +34,72 @@ FunctionDefinition Parser::parse_function() {
 
     expected("LeftBrace");
 
-    std::unique_ptr<Statement> statement_parse = parse_statement();
+    std::vector<std::unique_ptr<BlockItem>> body;
+
+    while (peek().type != "RightBrace") {
+        body.push_back(parse_block_item());
+    }
 
     expected("RightBrace");
 
 
 
-    return FunctionDefinition(std::move(id_parse), std::move(statement_parse));
+    return FunctionDefinition(std::move(id_parse), std::move(body));
+}
+
+std::unique_ptr<BlockItem> Parser::parse_block_item() {
+    if (peek().type == "KeywordInt") {
+        return std::make_unique<DeclarationBlockItem>(parse_declaration());
+    }
+
+    return std::make_unique<StatementBlockItem>(parse_statement());
+}
+
+Declaration Parser::parse_declaration() {
+    expected("KeywordInt");
+    Identifier name = parse_id();
+    std::unique_ptr<Expression> initializer;
+
+    if (peek().type == "Assignment") {
+        expected("Assignment");
+        initializer = parse_expression(0);
+    }
+
+    expected("Semicolon");
+
+    return Declaration(std::move(name), std::move(initializer));
 }
 
 std::unique_ptr<Statement> Parser::parse_statement() {
-    expected("KeywordReturn");
+    if (peek().type == "KeywordReturn") {
+        expected("KeywordReturn");
+
+        std::unique_ptr<Expression> expression_parse = parse_expression(0);
+
+        expected("Semicolon");
+
+        return std::make_unique<ReturnStatement>(std::move(expression_parse));
+    }
+
+    if (peek().type == "Semicolon") {
+        expected("Semicolon");
+        return std::make_unique<NullStatement>();
+    }
 
     std::unique_ptr<Expression> expression_parse = parse_expression(0);
 
     expected("Semicolon");
 
-    return std::make_unique<ReturnStatement>(std::move(expression_parse));
+    return std::make_unique<ExpressionStatement>(std::move(expression_parse));
 }
 
 std::unique_ptr<Expression> Parser::parse_factor() {
     const Token& next_token = peek();
     if (next_token.type == "Integer") {
         return parse_int();
+
+    } else if (next_token.type == "Identifier") {
+        return std::make_unique<VariableExpression>(parse_id());
 
     } else if (next_token.type == "Minus" || next_token.type == "Tilde" || next_token.type == "LogicalNot") {
         UnaryOperator unop = parse_unop();
@@ -77,11 +120,26 @@ std::unique_ptr<Expression> Parser::parse_factor() {
 std::unique_ptr<Expression> Parser::parse_expression(int min_prec) {
     std::unique_ptr<Expression> left = parse_factor();
     Token next_token = peek();
-    while ((next_token.type == "Addition" || next_token.type == "Minus" || next_token.type == "Multiplication" || next_token.type == "Division" || next_token.type == "Remainder" || next_token.type == "LogicalAnd" || next_token.type == "LogicalOr" || next_token.type == "Equal" || next_token.type == "NotEqual" || next_token.type == "LessThan" || next_token.type == "LessThanOrEqual" || next_token.type == "GreaterThan" || next_token.type == "GreaterThanOrEqual") && precedence(next_token) >= min_prec) {
-        BinaryOperator bin_op = parse_binop();
-        int input_minprec = precedence(next_token) + 1;
-        std::unique_ptr<Expression> right = parse_expression(input_minprec);
-        left = std::make_unique<BinaryExpression>(bin_op, std::move(left), std::move(right));
+    while ((next_token.type == "Assignment" || next_token.type == "Addition" || next_token.type == "Minus" || next_token.type == "Multiplication" || next_token.type == "Division" || next_token.type == "Remainder" || next_token.type == "LogicalAnd" || next_token.type == "LogicalOr" || next_token.type == "Equal" || next_token.type == "NotEqual" || next_token.type == "LessThan" || next_token.type == "LessThanOrEqual" || next_token.type == "GreaterThan" || next_token.type == "GreaterThanOrEqual") && precedence(next_token) >= min_prec) {
+        if (next_token.type == "Assignment") {
+            expected("Assignment");
+            std::unique_ptr<Expression> right = parse_expression(
+                precedence(next_token)
+            );
+            left = std::make_unique<AssignmentExpression>(
+                std::move(left),
+                std::move(right)
+            );
+        } else {
+            BinaryOperator bin_op = parse_binop();
+            int input_minprec = precedence(next_token) + 1;
+            std::unique_ptr<Expression> right = parse_expression(input_minprec);
+            left = std::make_unique<BinaryExpression>(
+                bin_op,
+                std::move(left),
+                std::move(right)
+            );
+        }
         next_token = peek();
     }
     return left;
@@ -216,7 +274,9 @@ const Token& Parser::peek() const {
 int Parser::precedence(const Token& token) {
     
     // const Token& token = peek();
-    std::cout << token.type << std::endl;
+    if (token.type == "Assignment") {
+        return 1;
+    }
     if (token.type == "LogicalOr") {
         return 5;
     }

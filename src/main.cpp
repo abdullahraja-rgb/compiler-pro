@@ -76,6 +76,11 @@ void print_expression(const Expression& expression, int indent) {
                   << "ConstantExpression value="
                   << constant->value
                   << '\n';
+    } else if (const auto* variable = dynamic_cast<const VariableExpression*>(&expression)) {
+        std::cout << spaces
+                  << "VariableExpression name="
+                  << variable->name
+                  << '\n';
     } else if (const auto* unary = dynamic_cast<const UnaryExpression*>(&expression)) {
         std::cout << spaces
                   << "UnaryExpression operator="
@@ -91,6 +96,11 @@ void print_expression(const Expression& expression, int indent) {
 
         print_expression(*binary->exp1, indent + 2);
         print_expression(*binary->exp2, indent + 2);
+    } else if (const auto* assignment =
+                   dynamic_cast<const AssignmentExpression*>(&expression)) {
+        std::cout << spaces << "AssignmentExpression\n";
+        print_expression(*assignment->left, indent + 2);
+        print_expression(*assignment->right, indent + 2);
     }
 }
 
@@ -207,10 +217,41 @@ int main(int argc, char* argv[]) {
             std::cout << "Program\n";
             std::cout << "  FunctionDefinition name=" << ast_rep.function.name << '\n';
 
-            if (const auto* return_statement =
-                    dynamic_cast<const ReturnStatement*>(ast_rep.function.body.get())) {
-                std::cout << "    ReturnStatement\n";
-                print_expression(*return_statement->value, 6);
+            for (const std::unique_ptr<BlockItem>& block_item : ast_rep.function.body) {
+                if (const auto* declaration_item =
+                        dynamic_cast<const DeclarationBlockItem*>(block_item.get())) {
+                    std::cout << "    Declaration name="
+                              << declaration_item->declaration.name
+                              << '\n';
+                    if (declaration_item->declaration.initializer != nullptr) {
+                        print_expression(
+                            *declaration_item->declaration.initializer,
+                            6
+                        );
+                    }
+                    continue;
+                }
+
+                const auto* statement_item =
+                    dynamic_cast<const StatementBlockItem*>(block_item.get());
+
+                if (statement_item == nullptr) {
+                    continue;
+                }
+
+                if (const auto* return_statement = dynamic_cast<const ReturnStatement*>(
+                        statement_item->statement.get())) {
+                    std::cout << "    ReturnStatement\n";
+                    print_expression(*return_statement->value, 6);
+                } else if (const auto* expression_statement =
+                               dynamic_cast<const ExpressionStatement*>(
+                                   statement_item->statement.get())) {
+                    std::cout << "    ExpressionStatement\n";
+                    print_expression(*expression_statement->expression, 6);
+                } else if (dynamic_cast<const NullStatement*>(
+                               statement_item->statement.get()) != nullptr) {
+                    std::cout << "    NullStatement\n";
+                }
             }
             // ------------------------------------------------------------
         }
