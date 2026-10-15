@@ -345,6 +345,32 @@ int main(int argc, char* argv[]) {
                       << total_time << std::endl;
         }
 
+        if (option.empty()) {
+            std::filesystem::path output_path(filename);
+            output_path.replace_extension("");
+
+#ifdef __APPLE__
+            std::string link_command =
+                "gcc -arch x86_64 \"" + assembly_path.string() +
+                "\" -o \"" + output_path.string() + "\"";
+#else
+            std::string link_command =
+                "gcc \"" + assembly_path.string() +
+                "\" -o \"" + output_path.string() + "\"";
+#endif
+
+            if (std::system(link_command.c_str()) != 0) {
+                std::filesystem::remove(assembly_path);
+                std::filesystem::remove(preprocessed_path);
+                std::filesystem::remove(output_path);
+                std::cerr << "Assembly and linking failed\n";
+                return 1;
+            }
+
+            std::filesystem::remove(assembly_path);
+            std::filesystem::remove(preprocessed_path);
+        }
+
 
         // now we have stored the string in filewords we now need to pass this to our lexer
     } else {
