@@ -15,6 +15,7 @@
 #include "../include/mycc/parser.hpp"
 #include "../include/mycc/codegen.hpp"
 #include "../include/mycc/tacky.hpp"
+#include "../include/mycc/semantic_analysis.hpp"
 #include <unordered_set>
 #include <cstdlib>
 #include <chrono>
@@ -109,7 +110,7 @@ int main(int argc, char* argv[]) {
     std::string filename;
     // initially an empty string
     std::string option;
-    const std::unordered_set<std::string> valid_options{"--lex", "--parse", "--codegen", "--tacky", "--benchmark"};
+    const std::unordered_set<std::string> valid_options{"--lex", "--parse", "--validate", "--codegen", "--tacky", "--benchmark"};
 
     if (argc > 3 || argc < 2) {
         std::cout << "Invalid input only enter C Filename" << std::endl;
@@ -258,6 +259,13 @@ int main(int argc, char* argv[]) {
 
 
         if (option == "--parse") {
+            return 0;
+        }
+
+        SemanticAnalyzer semantic_analyzer;
+        semantic_analyzer.resolve_program(ast_rep);
+
+        if (option == "--validate") {
             return 0;
         }
 
