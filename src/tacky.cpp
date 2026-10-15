@@ -43,12 +43,35 @@ Tacky::FunctionDefinition TackyGenerator::generate_function(const FunctionDefini
     std::vector<std::unique_ptr<Tacky::Instruction>> inst_list;
 
     for (const std::unique_ptr<BlockItem>& block_item : func_def.body) {
+        const DeclarationBlockItem* declaration_item =
+            dynamic_cast<const DeclarationBlockItem*>(block_item.get());
+
+        if (declaration_item != nullptr) {
+            const Declaration& declaration = declaration_item->declaration;
+
+            if (declaration.initializer != nullptr) {
+                std::unique_ptr<Tacky::Value> initializer = generate_value(
+                    *declaration.initializer,
+                    inst_list
+                );
+
+                inst_list.push_back(
+                    std::make_unique<Tacky::Copy>(
+                        std::move(initializer),
+                        std::make_unique<Tacky::VariableValue>(declaration.name)
+                    )
+                );
+            }
+
+            continue;
+        }
+
         const StatementBlockItem* statement_item =
             dynamic_cast<const StatementBlockItem*>(block_item.get());
 
         if (statement_item == nullptr) {
             throw std::runtime_error(
-                "Declarations are not supported in TACKY generation yet"
+                "Unsupported block item in TACKY generation"
             );
         }
 
@@ -59,6 +82,12 @@ Tacky::FunctionDefinition TackyGenerator::generate_function(const FunctionDefini
             inst_list.push_back(std::move(instruction));
         }
     }
+
+    inst_list.push_back(
+        std::make_unique<Tacky::ReturnInstruction>(
+            std::make_unique<Tacky::ConstantValue>(0)
+        )
+    );
 
     return Tacky::FunctionDefinition(std::move(func_name), std::move(inst_list));
 }
@@ -85,6 +114,18 @@ TackyGenerator::generate_instructions(const Statement& statement) {
         return instructions;
     }
 
+    const ExpressionStatement* expression_statement =
+        dynamic_cast<const ExpressionStatement*>(&statement);
+
+    if (expression_statement != nullptr) {
+        generate_value(*expression_statement->expression, instructions);
+        return instructions;
+    }
+
+    if (dynamic_cast<const NullStatement*>(&statement) != nullptr) {
+        return instructions;
+    }
+
     throw std::runtime_error(
         "Unsupported statement in TACKY generation"
     );
@@ -101,6 +142,45 @@ std::unique_ptr<Tacky::Value> TackyGenerator::generate_value(
         return std::make_unique<Tacky::ConstantValue>(
             constant_expression->value
         );
+    }
+
+    const VariableExpression* variable_expression =
+        dynamic_cast<const VariableExpression*>(&expression);
+
+    if (variable_expression != nullptr) {
+        return std::make_unique<Tacky::VariableValue>(
+            variable_expression->name
+        );
+    }
+
+    const AssignmentExpression* assignment_expression =
+        dynamic_cast<const AssignmentExpression*>(&expression);
+
+    if (assignment_expression != nullptr) {
+        const VariableExpression* destination =
+            dynamic_cast<const VariableExpression*>(
+                assignment_expression->left.get()
+            );
+
+        if (destination == nullptr) {
+            throw std::runtime_error(
+                "Assignment target must be resolved before TACKY generation"
+            );
+        }
+
+        std::unique_ptr<Tacky::Value> result = generate_value(
+            *assignment_expression->right,
+            instructions
+        );
+
+        instructions.push_back(
+            std::make_unique<Tacky::Copy>(
+                std::move(result),
+                std::make_unique<Tacky::VariableValue>(destination->name)
+            )
+        );
+
+        return std::make_unique<Tacky::VariableValue>(destination->name);
     }
 
     const UnaryExpression* unary_expression =
